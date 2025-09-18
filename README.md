@@ -12,7 +12,8 @@ A lightweight Python library for tracing function call relationships and visuali
 
 - **Simple API**: Just add `@trace` decorator or use `with trace_scope():`
 - **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
-- **Performance Insights**: Track execution time, call counts, and bottlenecks
+- **Performance Profiling**: Track execution time, memory usage, and bottlenecks
+- **Detailed Call Analysis**: View call hierarchies and timing breakdowns
 - **Privacy-Focused**: Optionally anonymize function arguments
 - **Multiple Formats**: Export to JSON or interactive HTML
 - **Zero Dependencies**: Works out of the box (except for networkx for graph operations)
@@ -40,9 +41,63 @@ cd callflow-tracer
 pip install -e ".[dev]"
 ```
 
-### Basic Usage
+## 🔍 Advanced Profiling Examples
 
-#### Option 1: Decorator Approach
+### Memory and Performance Profiling
+
+```python
+from callflow_tracer import profile_function, profile_section, get_memory_usage
+import time
+import random
+import numpy as np
+
+@profile_function
+def process_data(data_size: int) -> float:
+    """Process data with CPU and memory profiling."""
+    # Allocate memory
+    data = [random.random() for _ in range(data_size)]
+    
+    # CPU-intensive work
+    total = sum(data) / len(data) if data else 0
+    
+    # Simulate I/O
+    time.sleep(0.1)
+    
+    return total
+
+def analyze_performance():
+    """Example using profile_section context manager."""
+    with profile_section("Data Processing"):
+        # Process different data sizes
+        for size in [1000, 10000, 100000]:
+            with profile_section(f"Processing {size} elements"):
+                result = process_data(size)
+                print(f"Result: {result:.4f}")
+                
+                # Get memory usage
+                mem_usage = get_memory_usage()
+                print(f"Memory usage: {mem_usage:.2f} MB")
+
+if __name__ == "__main__":
+    analyze_performance()
+    
+    # Export the profile data to HTML
+    from callflow_tracer import export_html
+    export_html("performance_profile.html")
+```
+
+### Visualizing Performance Data
+
+After running the above code, you can view the performance data in an interactive HTML report that includes:
+
+- Call hierarchy with timing information
+- Memory usage over time
+- Hotspots and bottlenecks
+- Function execution statistics
+
+## 🛠 Basic Usage
+
+### Option 1: Decorator Approach
 ```python
 from callflow_tracer import trace, trace_scope
 

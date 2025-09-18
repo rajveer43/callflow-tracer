@@ -31,7 +31,7 @@ setup(
     version=get_version(),
     author="Rajveer Rathod",
     author_email="rathodrajveer1311@gmail.com",
-    description="A lightweight Python library for tracing function call relationships and visualizing them as interactive graphs",
+    description="A lightweight Python library for tracing function call relationships, performance profiling, and visualizing them as interactive graphs",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/rajveer43/callflow-tracer",
@@ -39,9 +39,10 @@ setup(
     package_data={
         'callflow_tracer': ['templates/*.html'],
     },
-    python_requires='>=3.8',
+    python_requires='>=3.8',  # Required for tracemalloc and cProfile features
     install_requires=[
         'networkx>=2.6',
+        'numpy>=1.21.0',  # For array operations in examples
     ],
     extras_require={
         'dev': [

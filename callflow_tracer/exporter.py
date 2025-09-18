@@ -28,7 +28,8 @@ def export_json(graph: CallGraph, output_path: Union[str, Path]) -> None:
 
 def export_html(graph: CallGraph, output_path: Union[str, Path], 
                 title: str = "Call Flow Graph", 
-                include_vis_js: bool = True) -> None:
+                include_vis_js: bool = True,
+                profiling_stats: Optional[dict] = None) -> None:
     """
     Export call graph to interactive HTML format.
     
@@ -45,7 +46,7 @@ def export_html(graph: CallGraph, output_path: Union[str, Path],
     graph_data = graph.to_dict()
     
     # Generate HTML content
-    html_content = _generate_html(graph_data, title, include_vis_js)
+    html_content = _generate_html(graph_data, title, include_vis_js, profiling_stats)
     
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
@@ -75,7 +76,7 @@ def export_graph(graph: CallGraph, output_path: Union[str, Path],
         raise ValueError(f"Unsupported format: {format}. Supported formats: json, html")
 
 
-def _generate_html(graph_data: dict, title: str, include_vis_js: bool) -> str:
+def _generate_html(graph_data: dict, title: str, include_vis_js: bool, profiling_stats: Optional[dict]) -> str:
     """Generate HTML content with embedded JavaScript for visualization."""
     
     # Prepare nodes and edges for vis.js
@@ -107,6 +108,13 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool) -> str:
     # Generate the HTML template
     vis_js_cdn = "https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" if include_vis_js else ""
     
+    # Prepare profiling stats display
+    profiling_present = profiling_stats is not None
+    memory_current = profiling_stats.get('memory', {}).get('current_mb', 0.0) if profiling_present else 0.0
+    memory_peak = profiling_stats.get('memory', {}).get('peak_mb', 0.0) if profiling_present else 0.0
+    io_wait = profiling_stats.get('io_wait', 0.0) if profiling_present else 0.0
+    cpu_profile_text = profiling_stats.get('cpu', {}).get('profile_data', '') if profiling_present else ''
+
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -166,6 +174,14 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool) -> str:
             background: #f8f9fa;
             border-top: 1px solid #dee2e6;
         }}
+        details pre {{
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 300px;
+        }}
         .control-group {{
             margin: 10px 0;
         }}
@@ -218,11 +234,15 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool) -> str:
                 <div class="stat-value">{graph_data['metadata']['duration']:.3f}s</div>
                 <div class="stat-label">Total Duration</div>
             </div>
+            {f"<div class=\"stat\"><div class=\"stat-value\">{memory_current:.2f}MB</div><div class=\"stat-label\">Memory (current)</div></div>" if profiling_present else ''}
+            {f"<div class=\"stat\"><div class=\"stat-value\">{memory_peak:.2f}MB</div><div class=\"stat-label\">Memory (peak)</div></div>" if profiling_present else ''}
+            {f"<div class=\"stat\"><div class=\"stat-value\">{io_wait:.3f}s</div><div class=\"stat-label\">I/O wait</div></div>" if profiling_present else ''}
         </div>
         
         <div id="network"></div>
         
         <div class="controls">
+            {f"<details><summary><strong>CPU Profile (cProfile)</strong></summary><pre>{cpu_profile_text}</pre></details>" if profiling_present and cpu_profile_text else ''}
             <div class="control-group">
                 <label for="physics">Physics:</label>
                 <select id="physics">

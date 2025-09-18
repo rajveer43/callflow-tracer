@@ -15,9 +15,9 @@ Example usage:
         my_function()
 """
 
-__version__ = "0.1.0"
-__author__ = "CallFlow Tracer Team"
-__email__ = "contact@callflow-tracer.dev"
+__version__ = "0.2.1"
+__author__ = "Rajveer Rathod"
+__email__ = "rathodrajveer1311@gmail.com"
 
 # Main API exports
 from .tracer import (
@@ -34,6 +34,13 @@ from .exporter import (
     export_json,
     export_html,
     export_graph
+)
+
+from .profiling import (
+    profile_function,
+    profile_section,
+    get_memory_usage,
+    PerformanceStats
 )
 
 # Convenience function for one-liner usage
@@ -57,22 +64,26 @@ def trace_and_export(output_file: str, include_args: bool = False):
 __all__ = [
     # Core tracing functions
     'trace',
-    'trace_scope', 
-    'trace_and_export',
-    
-    # Graph management
+    'trace_scope',
     'get_current_graph',
     'clear_trace',
-    
-    # Export functions
-    'export_json',
-    'export_html', 
-    'export_graph',
     
     # Data structures
     'CallGraph',
     'CallNode',
     'CallEdge',
+    'PerformanceStats',
+    
+    # Export functions
+    'export_json',
+    'export_html',
+    'export_graph',
+    'trace_and_export',
+    
+    # Profiling
+    'profile_function',
+    'profile_section',
+    'get_memory_usage',
     
     # Package metadata
     '__version__',
