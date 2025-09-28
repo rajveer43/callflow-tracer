@@ -158,51 +158,38 @@ class CallTracer:
         if not self.enabled:
             return
         
-        try:
-            if event == 'call':
-                # Record call start time
-                self.call_times[frame] = time.time()
+        if event == 'call':
+            # Record call start time
+            self.call_times[frame] = time.time()
+            
+            # Get caller and callee information
+            caller_frame = frame.f_back
+            if caller_frame:
+                caller_name = self._get_function_name(caller_frame)
+                callee_name = self._get_function_name(frame)
                 
-                # Get caller and callee information
+                # Record the call
+                self.graph.record_call(caller_name, callee_name, 0.0)
+        
+        elif event == 'return':
+            # Calculate call duration
+            if frame in self.call_times:
+                duration = time.time() - self.call_times[frame]
+                del self.call_times[frame]
+                
+                # Update the last recorded call with actual duration
                 caller_frame = frame.f_back
                 if caller_frame:
                     caller_name = self._get_function_name(caller_frame)
                     callee_name = self._get_function_name(frame)
                     
-                    # Skip internal callflow-tracer functions
-                    if 'callflow_tracer' in callee_name or 'callflow_tracer' in caller_name:
-                        return self._trace_calls
-                    
-                    # Record the call with initial duration of 0
-                    self.graph.record_call(caller_name, callee_name, 0.0)
-            
-            elif event == 'return':
-                # Calculate call duration
-                if frame in self.call_times:
-                    duration = time.time() - self.call_times[frame]
-                    del self.call_times[frame]
-                    
-                    # Update the node with the actual duration
-                    callee_name = self._get_function_name(frame)
-                    if 'callflow_tracer' not in callee_name:
-                        # Update node statistics
-                        if callee_name in self.graph.nodes:
-                            node = self.graph.nodes[callee_name]
-                            node.total_time += duration
-                            
-                        # Update edge statistics
-                        caller_frame = frame.f_back
-                        if caller_frame:
-                            caller_name = self._get_function_name(caller_frame)
-                            if 'callflow_tracer' not in caller_name:
-                                edge_key = (caller_name, callee_name)
-                                if edge_key in self.graph.edges:
-                                    edge = self.graph.edges[edge_key]
-                                    edge.total_time += duration
-        
-        except Exception as e:
-            # Don't let tracing errors break the program
-            pass
+                    # Find and update the edge
+                    edge_key = (caller_name, callee_name)
+                    if edge_key in self.graph.edges:
+                        edge = self.graph.edges[edge_key]
+                        # Update the last call's duration
+                        edge.total_time += duration
+                        edge.call_count = max(edge.call_count, 1)
         
         return self._trace_calls
     
@@ -237,35 +224,21 @@ def trace(func: Callable) -> Callable:
     def wrapper(*args, **kwargs):
         global _global_tracer, _global_graph
         
-        # If we're inside a trace_scope, use the active tracer
-        if _global_graph is not None:
-            start_time = time.time()
-            try:
-                result = func(*args, **kwargs)
-                return result
-            finally:
-                duration = time.time() - start_time
-                # Record the call in the active graph
-                caller_name = _get_caller_name()
-                callee_name = f"{func.__module__}.{func.__name__}" if func.__module__ != '__main__' else func.__name__
-                _global_graph.record_call(caller_name, callee_name, duration, args, kwargs)
-        else:
-            # If no active trace_scope, create a temporary one
-            if _global_tracer is None:
-                _global_graph = CallGraph()
-                _global_tracer = CallTracer(_global_graph)
-                _global_tracer.start()
-            
-            start_time = time.time()
-            try:
-                result = func(*args, **kwargs)
-                return result
-            finally:
-                duration = time.time() - start_time
-                # Record the call
-                caller_name = _get_caller_name()
-                callee_name = f"{func.__module__}.{func.__name__}" if func.__module__ != '__main__' else func.__name__
-                _global_graph.record_call(caller_name, callee_name, duration, args, kwargs)
+        if _global_tracer is None:
+            _global_graph = CallGraph()
+            _global_tracer = CallTracer(_global_graph)
+            _global_tracer.start()
+        
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            duration = time.time() - start_time
+            # Record the call
+            caller_name = _get_caller_name()
+            callee_name = f"{func.__module__}.{func.__name__}" if func.__module__ != '__main__' else func.__name__
+            _global_graph.record_call(caller_name, callee_name, duration, args, kwargs)
     
     return wrapper
 

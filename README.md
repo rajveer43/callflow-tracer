@@ -8,6 +8,19 @@ A lightweight Python library for tracing function call relationships and visuali
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+## What's New in 0.2.2 (2025-09-28)
+
+- **Stability Fixes in Tracer Core**: Hardened error handling in `CallTracer._trace_calls`, preventing silent failures and ensuring test programs run to completion.
+- **Decorator/Scope Interop**: Resolved conflicts between the `@trace` decorator and `trace_scope` context manager; improved caller detection and global state management.
+- **Improved JSON Export**: Fixed "network.getData is not a function" by exporting from original `nodes`/`edges`, added richer metadata and better error handling.
+- **UI Enhancements (HTML Exporter)**:
+  - Added a modern, collapsible CPU profiling section with gradient header and dark code theme.
+  - Implemented working module filter with smooth zoom-to-fit and edge filtering.
+  - Restored Circular and Timeline layouts with correct positioning and auto-fit behavior.
+- **Version Sync**: Package version aligned across `pyproject.toml` and `callflow_tracer/__init__.py`.
+
+Thank you to users for feedback that helped guide these improvements.
+
 ## ✨ Features
 
 - **Simple API**: Just add `@trace` decorator or use `with trace_scope():`

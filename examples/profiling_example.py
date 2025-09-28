@@ -50,18 +50,18 @@ def example_with_sections():
     """Example using profile_section context manager."""
     with profile_section("Data Processing"):
         print("Processing small dataset...")
-        result1 = process_data(1000)
+        result1 = process_data(100)
         
         # Check memory usage
         mem = get_memory_usage()
         print(f"\nCurrent memory usage: {mem['current_mb']:.2f}MB")
         
         print("\nProcessing large dataset...")
-        result2 = process_data(10000)
+        result2 = process_data(100)
         
         # Allocate some large data
         print("\nAllocating large numpy array...")
-        large_data = generate_large_data(1000)  # 10MB
+        large_data = generate_large_data(100)  # 10MB
         
         # Check memory usage after large allocation
         mem = get_memory_usage()
@@ -93,15 +93,15 @@ if __name__ == "__main__":
 
     # Example 3: Export interactive call graph (HTML)
     print("\n3. Visualizing as interactive call graph (exports to callgraph.html):")
-    output_html = os.path.join(REPO_ROOT, "dist", "callgraph.html")
+    # output_html = os.path.join(REPO_ROOT, "dist", "callgraph.html")
     # Collect profiling stats while tracing and then embed them in the HTML
     with profile_section("Tracing + Profiling") as perf_stats:
         with trace_scope(None) as graph:
             # Run a representative workload to populate the call graph
-            _ = process_data(2000)
+            _ = process_data(10000)
             _ = example_with_sections()
-    export_html(graph, output_html, title="Call Graph with Performance Profiling", profiling_stats=perf_stats.to_dict())
-    print(f"Call graph written to: {output_html}")
+    export_html(graph, "callgraph.html", title="Call Graph with Performance Profiling", profiling_stats=perf_stats.to_dict())
+    # print(f"Call graph written to: {output_html}")
     
     print("\n=== Example Complete ===")
     print("Check the output above for performance metrics.")

@@ -14,12 +14,21 @@ Example usage:
     with trace_scope("output.html"):
         my_function()
 """
-
-__version__ = "0.2.1"
+ 
+__version__ = "0.2.2"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
-# Main API exports
+# Check if we're in a Jupyter environment
+try:
+    from IPython import get_ipython
+    if get_ipython() is not None:
+        from .jupyter import init_jupyter, display_callgraph, CallNode, CallEdge
+        init_jupyter()
+except (ImportError, AttributeError):
+    pass
+
+# Core tracing functions
 from .tracer import (
     trace,
     trace_scope,
@@ -30,11 +39,21 @@ from .tracer import (
     CallEdge
 )
 
+# Visualization functions
 from .exporter import (
     export_json,
     export_html,
     export_graph
 )
+from .flamegraph import generate_flamegraph
+
+# Jupyter integration (automatically initialized if in Jupyter)
+try:
+    from .jupyter import display_callgraph
+except ImportError:
+    # IPython not available, define a dummy function
+    def display_callgraph(*args, **kwargs):
+        print("Jupyter integration not available. Install IPython to use display_callgraph.")
 
 from .profiling import (
     profile_function,
@@ -67,17 +86,18 @@ __all__ = [
     'trace_scope',
     'get_current_graph',
     'clear_trace',
-    
-    # Data structures
     'CallGraph',
-    'CallNode',
-    'CallEdge',
-    'PerformanceStats',
     
     # Export functions
     'export_json',
     'export_html',
     'export_graph',
+    
+    # Visualization functions
+    'display_callgraph',
+    'generate_flamegraph',
+    
+    # Convenience functions
     'trace_and_export',
     
     # Profiling
