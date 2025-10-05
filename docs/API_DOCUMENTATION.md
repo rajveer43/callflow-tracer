@@ -78,6 +78,8 @@ if graph:
 
 Clear the current trace data.
 
+Note: This function is not thread-safe.
+
 **Example:**
 ```python
 from callflow_tracer import clear_trace
