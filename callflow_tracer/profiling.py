@@ -24,6 +24,7 @@ class PerformanceStats:
         self.memory_snapshot = None
         self.start_time = 0.0
         self.cpu_profile = None
+        self.cpu_profile_stats = None  # Store pstats.Stats object
         self.io_wait_time = 0.0
         self.last_io_check = 0.0
         self._is_top_level = False
@@ -49,12 +50,13 @@ class PerformanceStats:
     
     def _get_cpu_stats(self) -> Dict[str, Any]:
         """Get CPU profiling statistics."""
-        if not self.cpu_profile:
+        if not self.cpu_profile_stats:
             return {}
             
         s = io.StringIO()
-        ps = pstats.Stats(self.cpu_profile, stream=s).sort_stats('cumulative')
-        ps.print_stats(10)  # Top 10 functions by cumulative time
+        # Use the stored pstats.Stats object
+        self.cpu_profile_stats.stream = s
+        self.cpu_profile_stats.print_stats()
         
         return {
             'profile_data': s.getvalue()
@@ -118,9 +120,11 @@ def profile_function(func: T) -> T:
             stats.io_wait_time = (time.perf_counter() - stats.start_time) - \
                                (time.process_time() - stats.last_io_check)
             
-            # Store CPU profile if we have one
+            # Create a snapshot of CPU profile stats before stopping
             if _global_profiler:
                 stats.cpu_profile = _global_profiler
+                # Create a pstats.Stats object from the profiler
+                stats.cpu_profile_stats = pstats.Stats(_global_profiler)
             
             # Take memory snapshot if we're the last profiler
             if _active_profilers == 1:
@@ -162,9 +166,11 @@ def profile_section(name: str = None):
         stats.io_wait_time = (time.perf_counter() - stats.start_time) - \
                            (time.process_time() - stats.last_io_check)
         
-        # Store CPU profile if we have one
+        # Create a snapshot of CPU profile stats before stopping
         if _global_profiler:
             stats.cpu_profile = _global_profiler
+            # Create a pstats.Stats object from the profiler
+            stats.cpu_profile_stats = pstats.Stats(_global_profiler)
         
         # Take memory snapshot if we're the last profiler
         if _active_profilers == 1:

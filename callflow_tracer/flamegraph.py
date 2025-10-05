@@ -18,7 +18,12 @@ from .tracer import CallGraph, CallNode
 def generate_flamegraph(call_graph: Union[CallGraph, dict], 
                       output_file: Optional[Union[str, Path]] = None,
                       width: int = 1200,
-                      height: int = 800) -> Optional[str]:
+                      height: int = 800,
+                      title: str = "CallFlow Flame Graph",
+                      color_scheme: str = "default",
+                      show_stats: bool = True,
+                      min_width: float = 0.1,
+                      search_enabled: bool = True) -> Optional[str]:
     """
     Generate an interactive flame graph from call trace data.
     
@@ -27,6 +32,11 @@ def generate_flamegraph(call_graph: Union[CallGraph, dict],
         output_file: Path to save the HTML output. If None, a temporary file will be created.
         width: Width of the flame graph in pixels
         height: Height of the flame graph in pixels
+        title: Title for the flame graph
+        color_scheme: Color scheme ('default', 'hot', 'cool', 'rainbow', 'performance')
+        show_stats: Whether to show statistics panel
+        min_width: Minimum width threshold (hide functions taking less than this %)
+        search_enabled: Enable search functionality
         
     Returns:
         Path to the generated HTML file if output_file is None, otherwise None
@@ -40,8 +50,14 @@ def generate_flamegraph(call_graph: Union[CallGraph, dict],
     # Process the call graph data into a flame graph format
     flame_data = _process_for_flamegraph(graph_data)
     
+    # Calculate statistics
+    stats = _calculate_statistics(graph_data) if show_stats else None
+    
     # Generate the HTML content
-    html_content = _generate_flamegraph_html(flame_data, width, height)
+    html_content = _generate_flamegraph_html(
+        flame_data, width, height, title, color_scheme, 
+        stats, min_width, search_enabled
+    )
     
     # Write to file or return the HTML content
     if output_file is None:
@@ -164,7 +180,65 @@ def _build_flame_children(node_data: dict, nodes: dict, edges: list) -> None:
         node_data['children'].append(child_data)
 
 
-def _generate_flamegraph_html(flame_data: List[dict], width: int, height: int) -> str:
+def _calculate_statistics(graph_data: dict) -> dict:
+    """
+    Calculate statistics from the graph data.
+    
+    Args:
+        graph_data: The call graph data
+        
+    Returns:
+        Dictionary containing statistics
+    """
+    nodes = graph_data.get('nodes', [])
+    edges = graph_data.get('edges', [])
+    
+    if not nodes:
+        return {
+            'total_functions': 0,
+            'total_calls': 0,
+            'total_time': 0.0,
+            'avg_time_per_call': 0.0,
+            'slowest_function': None,
+            'most_called_function': None,
+            'call_depth': 0
+        }
+    
+    total_time = sum(n.get('total_time', 0) for n in nodes)
+    total_calls = sum(n.get('call_count', 0) for n in nodes)
+    
+    # Find slowest function
+    slowest = max(nodes, key=lambda n: n.get('total_time', 0))
+    
+    # Find most called function
+    most_called = max(nodes, key=lambda n: n.get('call_count', 0))
+    
+    # Calculate call depth (simplified)
+    call_depth = len(edges) // max(len(nodes), 1) + 1
+    
+    return {
+        'total_functions': len(nodes),
+        'total_calls': total_calls,
+        'total_time': round(total_time, 4),
+        'avg_time_per_call': round(total_time / max(total_calls, 1), 4),
+        'slowest_function': {
+            'name': slowest.get('name', 'Unknown'),
+            'time': round(slowest.get('total_time', 0), 4)
+        },
+        'most_called_function': {
+            'name': most_called.get('name', 'Unknown'),
+            'count': most_called.get('call_count', 0)
+        },
+        'call_depth': call_depth
+    }
+
+
+def _generate_flamegraph_html(flame_data: List[dict], width: int, height: int,
+                              title: str = "CallFlow Flame Graph",
+                              color_scheme: str = "default",
+                              stats: Optional[dict] = None,
+                              min_width: float = 0.1,
+                              search_enabled: bool = True) -> str:
     """
     Generate the HTML content for the flame graph.
     
@@ -186,6 +260,16 @@ def _generate_flamegraph_html(flame_data: List[dict], width: int, height: int) -
     
     # Convert the data to JSON for the JavaScript
     json_data = json.dumps(flame_data, indent=2)
+    
+    # Use enhanced template if stats are provided
+    if stats or search_enabled or color_scheme != 'default':
+        from .flamegraph_enhanced import generate_enhanced_html_template
+        return generate_enhanced_html_template(
+            json_data, width, height, title, color_scheme, 
+            stats, min_width, search_enabled
+        )
+    
+    # Otherwise use simple template
     chart_width = width - 40
     chart_height = height - 40
     

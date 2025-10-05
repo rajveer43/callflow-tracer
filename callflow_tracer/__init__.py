@@ -15,7 +15,7 @@ Example usage:
         my_function()
 """
  
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 

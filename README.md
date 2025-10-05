@@ -1,6 +1,6 @@
 # CallFlow Tracer 🧠
 
-A lightweight Python library for tracing function call relationships and visualizing them as interactive graphs. Perfect for understanding code flow, debugging performance issues, and documenting how your code works.
+> **A comprehensive Python library for tracing, profiling, and visualizing function call flows with interactive graphs and call graphs. Perfect for understanding codeflow, debugging performance bottlenecks, and optimizing code.**
 
 [![PyPI version](https://badge.fury.io/py/callflow-tracer.svg)](https://badge.fury.io/py/callflow-tracer)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
@@ -8,28 +8,72 @@ A lightweight Python library for tracing function call relationships and visuali
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## What's New in 0.2.2 (2025-09-28)
+## 🎉 What's New in Latest Version (2025-10-05)
 
-- **Stability Fixes in Tracer Core**: Hardened error handling in `CallTracer._trace_calls`, preventing silent failures and ensuring test programs run to completion.
-- **Decorator/Scope Interop**: Resolved conflicts between the `@trace` decorator and `trace_scope` context manager; improved caller detection and global state management.
-- **Improved JSON Export**: Fixed "network.getData is not a function" by exporting from original `nodes`/`edges`, added richer metadata and better error handling.
-- **UI Enhancements (HTML Exporter)**:
-  - Added a modern, collapsible CPU profiling section with gradient header and dark code theme.
-  - Implemented working module filter with smooth zoom-to-fit and edge filtering.
-  - Restored Circular and Timeline layouts with correct positioning and auto-fit behavior.
-- **Version Sync**: Package version aligned across `pyproject.toml` and `callflow_tracer/__init__.py`.
+### **🔥 Enhanced Flamegraph Visualization**
+- **Statistics Panel**: See total functions, calls, execution time, and bottlenecks at a glance
+- **5 Color Schemes**: Default, Hot, Cool, Rainbow, and **Performance** (Green=Fast, Red=Slow!)
+- **Search Functionality**: Find specific functions quickly in large graphs
+- **SVG Export**: Export high-quality vector graphics for presentations
+- **Modern UI**: Responsive design with gradients and smooth animations
 
-Thank you to users for feedback that helped guide these improvements.
+### **📊 Fixed CPU Profiling**
+- **Working cProfile Integration**: CPU profile now shows **actual execution times** (not 0.000s!)
+- **Accurate Call Counts**: Real function call statistics
+- **Hot Spot Identification**: Automatically identifies performance bottlenecks
+- **Complete Profile Data**: Full cProfile output with all metrics
 
-## ✨ Features
+### **🎨 Enhanced Call Graph Visualization**
+- **Working Module Filter**: Filter by Python module with smooth animations (FIXED!)
+- **All Layouts Working**: Hierarchical, Force-Directed, Circular, Timeline (FIXED!)
+- **JSON Export**: Fixed export functionality with proper metadata (FIXED!)
+- **Modern CPU Profile UI**: Collapsible section with beautiful design
 
-- **Simple API**: Just add `@trace` decorator or use `with trace_scope():`
-- **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
-- **Performance Profiling**: Track execution time, memory usage, and bottlenecks
-- **Detailed Call Analysis**: View call hierarchies and timing breakdowns
-- **Privacy-Focused**: Optionally anonymize function arguments
-- **Multiple Formats**: Export to JSON or interactive HTML
-- **Zero Dependencies**: Works out of the box (except for networkx for graph operations)
+### **📓 Jupyter Notebook Integration**
+- **Magic Commands**: `%%callflow_cell_trace` for quick tracing
+- **Inline Visualizations**: Display interactive graphs directly in notebooks
+- **Full Feature Support**: All features work seamlessly in Jupyter
+
+### **🐛 Critical Fixes**
+- ✅ Fixed tracer stability (programs now run to completion)
+- ✅ Fixed CPU profiling (shows actual times)
+- ✅ Fixed module filtering (now functional)
+- ✅ Fixed circular/timeline layouts (proper positioning)
+- ✅ Fixed JSON export (no more errors)
+
+## ✨ Key Features
+
+### 🎯 **Core Capabilities**
+- ✅ **Simple API**: Decorator or context manager - your choice
+- ✅ **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
+- ✅ **Performance Profiling**: CPU time, memory usage, I/O wait tracking
+- ✅ **Flamegraph Support**: Identify bottlenecks with flame graphs
+- ✅ **Call Graph Analysis**: Understand function relationships
+- ✅ **Jupyter Integration**: Works seamlessly in notebooks
+- ✅ **Multiple Export Formats**: HTML, JSON, SVG
+- ✅ **Zero Config**: Works out of the box
+
+### 🔥 **Flamegraph Features**
+- 📊 **Statistics Dashboard**: Total time, calls, depth, slowest function
+- 🎨 **5 Color Schemes**: Choose the best view for your analysis
+- 🔍 **Real-time Search**: Find functions instantly
+- 💾 **SVG Export**: High-quality graphics for reports
+- ⚡ **Performance Colors**: Green=fast, Red=slow (perfect for optimization!)
+- 📱 **Responsive Design**: Works on all screen sizes
+
+### 📈 **Profiling Features**
+- 🔥 **CPU Profiling**: cProfile integration with detailed statistics
+- 💾 **Memory Tracking**: Current and peak memory usage
+- ⏱️ **I/O Wait Time**: Measure time spent waiting
+- 📊 **Health Indicators**: Visual performance status
+- 🎯 **Bottleneck Detection**: Automatically identifies slow functions
+
+### 🎨 **Visualization Features**
+- 🌐 **Interactive Network**: Zoom, pan, explore call relationships
+- 🎨 **Multiple Layouts**: Hierarchical, Force-Directed, Circular, Timeline
+- 🔍 **Module Filtering**: Focus on specific parts of your code
+- 📊 **Rich Tooltips**: Detailed metrics on hover
+- 🎯 **Color Coding**: Performance-based coloring
 
 ## 🚀 Quick Start
 
@@ -47,12 +91,140 @@ cd callflow-tracer
 pip install -e .
 ```
 
-#### Development Installation
+### From development
 ```bash
-git clone https://github.com/rajveer43/callflow-tracer.git
-cd callflow-tracer
-pip install -e ".[dev]"
+pip install -e .[dev]
 ```
+
+### Basic Usage
+
+```python
+from callflow_tracer import trace_scope, export_html
+
+def calculate_fibonacci(n):
+    if n <= 1:
+        return n
+    return calculate_fibonacci(n-1) + calculate_fibonacci(n-2)
+
+# Trace execution
+with trace_scope() as graph:
+    result = calculate_fibonacci(10)
+    print(f"Result: {result}")
+
+# Export to interactive HTML
+export_html(graph, "fibonacci.html", title="Fibonacci Call Graph")
+```
+
+Open `fibonacci.html` in your browser to see the interactive visualization!
+
+---
+
+## 🔥 Flamegraph - Find Bottlenecks Fast!
+
+```python
+from callflow_tracer import trace_scope
+from callflow_tracer.flamegraph import generate_flamegraph
+import time
+
+def slow_function():
+    time.sleep(0.1)  # Bottleneck!
+    return sum(range(10000))
+
+def fast_function():
+    return sum(range(100))
+
+def main():
+    return slow_function() + fast_function()
+
+# Trace execution
+with trace_scope() as graph:
+    result = main()
+
+# Generate flamegraph with performance colors
+generate_flamegraph(
+    graph,
+    "flamegraph.html",
+    color_scheme="performance",  # Green=fast, Red=slow
+    show_stats=True,             # Show statistics
+    search_enabled=True          # Enable search
+)
+```
+
+**Open `flamegraph.html` and look for wide RED bars - those are your bottlenecks!** 🎯
+
+---
+
+## 📊 Complete Performance Analysis
+
+Combine tracing and profiling for comprehensive analysis:
+
+```python
+from callflow_tracer import trace_scope, profile_section, export_html
+from callflow_tracer.flamegraph import generate_flamegraph
+
+def application():
+    # Your application code
+    process_data()
+    analyze_results()
+
+# Trace and profile together
+with profile_section("Application") as perf_stats:
+    with trace_scope() as graph:
+        application()
+
+# Export call graph with profiling data
+export_html(
+    graph,
+    "callgraph.html",
+    title="Application Analysis",
+    profiling_stats=perf_stats.to_dict()
+)
+
+# Export flamegraph
+generate_flamegraph(
+    graph,
+    "flamegraph.html",
+    title="Performance Flamegraph",
+    color_scheme="performance",
+    show_stats=True
+)
+```
+
+You get:
+- **callgraph.html**: Interactive network showing function relationships + CPU profile
+- **flamegraph.html**: Stacked bars showing time distribution + statistics
+
+---
+
+## 📓 Jupyter Notebook Support
+
+```python
+# In Jupyter notebook
+from callflow_tracer import trace_scope, profile_section
+from callflow_tracer.jupyter import display_callgraph
+
+def my_function():
+    return sum(range(1000))
+
+# Trace and display inline
+with trace_scope() as graph:
+    result = my_function()
+
+# Display interactive graph in notebook
+display_callgraph(graph.to_dict(), height="600px")
+
+# Or use magic commands
+%%callflow_cell_trace
+
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+result = fibonacci(10)
+```
+
+---
 
 ## 🔍 Advanced Profiling Examples
 
@@ -243,27 +415,75 @@ The library automatically truncates function arguments to 100 characters for pri
 ```
 callflow-tracer/
 ├── callflow_tracer/
-│   ├── __init__.py          # Main API
-│   ├── tracer.py            # Core tracing logic
-│   └── exporter.py          # JSON/HTML export
-├── pyproject.toml           # Package configuration
-├── README.md               # This file
-└── LICENSE                 # MIT License
+│   ├── __init__.py              # Main API
+│   ├── tracer.py                # Core tracing logic
+│   ├── exporter.py              # HTML/JSON export
+│   ├── profiling.py             # Performance profiling
+│   ├── flamegraph.py            # Flamegraph generation
+│   ├── flamegraph_enhanced.py   # Enhanced flamegraph UI
+│   └── jupyter.py               # Jupyter integration
+├── examples/
+│   ├── flamegraph_example.py    # 7 flamegraph examples
+│   ├── flamegraph_enhanced_demo.py  # Enhanced features demo
+│   ├── jupyter_example.ipynb    # Jupyter notebook examples
+│   ├── jupyter_standalone_demo.py   # Standalone Jupyter demo
+│   ├── FLAMEGRAPH_README.md     # Flamegraph guide
+│   └── JUPYTER_README.md        # Jupyter guide
+├── tests/
+│   ├── test_flamegraph.py       # Flamegraph tests (10 tests)
+│   ├── test_flamegraph_enhanced.py  # Enhanced features tests (10 tests)
+│   ├── test_jupyter_integration.py  # Jupyter tests (7 tests)
+│   └── test_cprofile_fix.py     # CPU profiling tests
+├── docs/
+│   ├── API_DOCUMENTATION.md     # Complete API reference
+│   ├── FEATURES_COMPLETE.md     # All features documented
+│   ├── INSTALLATION_GUIDE.md    # Installation guide
+│   └── USER_GUIDE.md            # User guide
+├── CHANGELOG.md                 # Version history
+├── TESTING_GUIDE.md             # Testing guide
+├── QUICK_TEST.md                # Quick test reference
+├── ENHANCED_FEATURES.md         # Enhanced features guide
+├── pyproject.toml               # Package configuration
+├── README.md                    # This file
+└── LICENSE                      # MIT License
 ```
 
 ## 🎨 Visualization Features
 
-The generated HTML includes:
+### Call Graph Visualization
 
 - **Interactive Network**: Zoom, pan, and explore your call graph
+- **4 Layout Options**: 
+  - Hierarchical (top-down tree)
+  - Force-Directed (physics-based)
+  - Circular (equal spacing)
+  - Timeline (sorted by execution time)
+- **Module Filtering**: Filter by Python module (FIXED!)
 - **Color Coding**: 
-  - 🔴 Red: Slow functions (>100ms average)
-  - 🟢 Teal: Medium functions (10-100ms average)  
-  - 🔵 Blue: Fast functions (<10ms average)
-- **Filtering**: Filter by module to focus on specific parts of your code
-- **Layout Options**: Hierarchical or force-directed layouts
-- **Physics Controls**: Enable/disable physics simulation
-- **Hover Details**: Rich tooltips with performance metrics
+  - 🔴 Red: Slow functions (>100ms)
+  - 🟢 Teal: Medium functions (10-100ms)  
+  - 🔵 Blue: Fast functions (<10ms)
+- **Export Options**: PNG images and JSON data
+- **Rich Tooltips**: Detailed performance metrics
+
+### Flamegraph Visualization
+
+- **Stacked Bar Chart**: Width = time, Height = depth
+- **Statistics Panel**: Key metrics at a glance
+- **5 Color Schemes**: Default, Hot, Cool, Rainbow, Performance
+- **Search Functionality**: Find functions quickly
+- **SVG Export**: High-quality vector graphics
+- **Interactive Zoom**: Click to zoom, hover for details
+- **Optimization Tips**: Built-in guidance
+
+### CPU Profile Analysis
+
+- **Execution Time**: Actual CPU time (FIXED!)
+- **Function Calls**: Accurate call counts
+- **Hot Spots**: Automatically identified
+- **Detailed Output**: Complete cProfile data
+- **Health Indicators**: Visual status
+- **Collapsible UI**: Modern, clean interface
 
 ## 🚨 Important Notes
 
@@ -272,29 +492,187 @@ The generated HTML includes:
 - **Memory Usage**: Large applications may generate substantial trace data
 - **Privacy**: Function arguments are truncated by default for security
 
+## 📚 Documentation
+
+### Quick References
+- **[Quick Test Guide](QUICK_TEST.md)** - Fast testing reference
+- **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing
+- **[Enhanced Features](ENHANCED_FEATURES.md)** - New features guide
+- **[Changelog](CHANGELOG.md)** - Version history
+
+### Complete Guides
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - Complete API reference
+- **[Features Documentation](docs/FEATURES_COMPLETE.md)** - All features explained
+- **[Installation Guide](docs/INSTALLATION_GUIDE.md)** - Setup and configuration
+- **[Flamegraph Guide](examples/FLAMEGRAPH_README.md)** - Flamegraph documentation
+- **[Jupyter Guide](examples/JUPYTER_README.md)** - Jupyter integration guide
+
+### Examples
+- `examples/flamegraph_example.py` - 7 flamegraph examples
+- `examples/flamegraph_enhanced_demo.py` - Enhanced features demo (12 examples)
+- `examples/jupyter_example.ipynb` - Interactive Jupyter notebook
+- `examples/jupyter_standalone_demo.py` - Standalone demos
+
+### Tests
+- `tests/test_flamegraph.py` - 10 flamegraph tests
+- `tests/test_flamegraph_enhanced.py` - 10 enhanced feature tests
+- `tests/test_jupyter_integration.py` - 7 Jupyter tests
+- `tests/test_cprofile_fix.py` - CPU profiling tests
+
+---
+
+## 🧪 Testing
+
+### Run All Tests
+
+```bash
+# Test flamegraph functionality
+python tests/test_flamegraph.py
+python tests/test_flamegraph_enhanced.py
+
+# Test Jupyter integration
+python tests/test_jupyter_integration.py
+
+# Test CPU profiling fix
+python tests/test_cprofile_fix.py
+```
+
+### Run Examples
+
+```bash
+# Flamegraph examples (generates 7 HTML files)
+python examples/flamegraph_example.py
+
+# Enhanced flamegraph demo (generates 12 HTML files)
+python examples/flamegraph_enhanced_demo.py
+
+# Jupyter standalone demo (generates 5 HTML files)
+python examples/jupyter_standalone_demo.py
+```
+
+All tests should pass with:
+```
+============================================================
+RESULTS: X passed, 0 failed
+============================================================
+✓ ALL TESTS PASSED!
+```
+
+---
+
+## 🎯 Use Cases
+
+### 1. Finding Performance Bottlenecks
+```python
+generate_flamegraph(graph, "bottlenecks.html", color_scheme="performance")
+# Wide RED bars = bottlenecks!
+```
+
+### 2. Understanding Code Flow
+```python
+export_html(graph, "flow.html", layout="hierarchical")
+# See top-down execution flow
+```
+
+### 3. Comparing Optimizations
+```python
+# Before
+with trace_scope() as before:
+    unoptimized_code()
+
+# After
+with trace_scope() as after:
+    optimized_code()
+
+# Compare flamegraphs side by side
+```
+
+### 4. Jupyter Analysis
+```python
+# In notebook
+with trace_scope() as graph:
+    ml_pipeline()
+
+display_callgraph(graph.to_dict())
+```
+
+---
+
+## 🚨 Important Notes
+
+- **Performance Impact**: Tracing adds ~10-30% overhead. Use selectively for production code
+- **Thread Safety**: The tracer is thread-safe and can handle concurrent code
+- **Memory Usage**: Large applications may generate substantial trace data
+- **Privacy**: Function arguments are truncated by default for security
+- **Browser**: Requires modern browser with JavaScript for visualizations
+- **Internet**: CDN resources require internet connection (or use offline mode)
+
+---
+
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+For major changes, please open an issue first to discuss.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
+
 ## 🙏 Acknowledgments
 
-- Built with [NetworkX](https://networkx.org/) for graph operations
-- Visualizations powered by [vis.js](https://visjs.org/)
+### Technologies
+- **NetworkX**: Graph operations
+- **vis.js**: Interactive call graph visualizations
+- **D3.js**: Flamegraph rendering
+- **cProfile**: CPU profiling
+- **tracemalloc**: Memory tracking
+
+### Inspiration
 - Inspired by the need for better code understanding and debugging tools
+- Built for developers who want to optimize their Python applications
+- Community-driven improvements and feedback
+
+---
 
 ## 📞 Support
 
-- 📧 Email: rathodrajveer1311@gmail.com
-- 🐛 Issues: [GitHub Issues](https://github.com/rajveer43/callflow-tracer/issues)
-- 📖 Documentation: [GitHub Wiki](https://github.com/rajveer43/callflow-tracer/wiki)
-- 💬 Discussions: [GitHub Discussions](https://github.com/rajveer43/callflow-tracer/discussions)
+- 📧 **Email**: rathodrajveer1311@gmail.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/rajveer43/callflow-tracer/issues)
+- 📖 **Documentation**: [GitHub Wiki](https://github.com/rajveer43/callflow-tracer/wiki)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/rajveer43/callflow-tracer/discussions)
+
+---
+
+## 🌟 Star Us!
+
+If you find CallFlow Tracer useful, please star the repository on GitHub! ⭐
 
 ---
 
 **Happy Tracing! 🎉**
 
-*CallFlow Tracer makes understanding your code as easy as `pip install callflow-tracer`*
+*CallFlow Tracer - Making Python performance analysis beautiful and intuitive*
+
+```python
+from callflow_tracer import trace_scope
+from callflow_tracer.flamegraph import generate_flamegraph
+
+with trace_scope() as graph:
+    your_amazing_code()
+
+generate_flamegraph(graph, "amazing.html", color_scheme="performance")
+# Find your bottlenecks in seconds! 🔥
+```
