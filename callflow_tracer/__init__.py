@@ -15,7 +15,7 @@ Example usage:
         my_function()
 """
  
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
@@ -62,6 +62,33 @@ from .profiling import (
     PerformanceStats
 )
 
+# Async tracing support
+from .async_tracer import (
+    trace_async,
+    trace_scope_async,
+    gather_traced,
+    get_async_stats,
+    AsyncCallGraph
+)
+
+# Comparison mode
+from .comparison import (
+    compare_graphs,
+    export_comparison_html
+)
+
+# Memory leak detection
+from .memory_leak_detector import (
+    MemoryLeakDetector,
+    detect_leaks,
+    track_allocations,
+    find_reference_cycles,
+    get_memory_growth,
+    get_top_memory_consumers,
+    MemorySnapshot,
+    ObjectTracker
+)
+
 # Convenience function for one-liner usage
 def trace_and_export(output_file: str, include_args: bool = False):
     """
@@ -88,6 +115,13 @@ __all__ = [
     'clear_trace',
     'CallGraph',
     
+    # Async tracing functions
+    'trace_async',
+    'trace_scope_async',
+    'gather_traced',
+    'get_async_stats',
+    'AsyncCallGraph',
+    
     # Export functions
     'export_json',
     'export_html',
@@ -96,6 +130,20 @@ __all__ = [
     # Visualization functions
     'display_callgraph',
     'generate_flamegraph',
+    
+    # Comparison functions
+    'compare_graphs',
+    'export_comparison_html',
+    
+    # Memory leak detection
+    'MemoryLeakDetector',
+    'detect_leaks',
+    'track_allocations',
+    'find_reference_cycles',
+    'get_memory_growth',
+    'get_top_memory_consumers',
+    'MemorySnapshot',
+    'ObjectTracker',
     
     # Convenience functions
     'trace_and_export',

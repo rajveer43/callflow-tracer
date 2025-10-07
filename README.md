@@ -8,7 +8,29 @@
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## 🎉 What's New in Latest Version (2025-10-05)
+## 🎉 What's New in Latest Version (2025-10-06)
+
+### **⚡ NEW: Async/Await Support**
+- **@trace_async Decorator**: Trace async functions with full async/await support
+- **Async Context Manager**: `trace_scope_async()` for tracing async code blocks
+- **Concurrent Execution Tracking**: Visualize concurrent task execution patterns
+- **Async Statistics**: Track await time, active time, and concurrency levels
+- **gather_traced()**: Traced version of asyncio.gather for concurrent operations
+
+### **📊 NEW: Comparison Mode**
+- **Side-by-Side Comparison**: Compare two call graphs in split-screen HTML
+- **Before/After Analysis**: Perfect for optimization validation
+- **Diff Highlighting**: Automatic detection of improvements and regressions
+- **Performance Metrics**: Time saved, functions added/removed/modified
+- **Visual Indicators**: Color-coded improvements (green) and regressions (red)
+
+### **💾 NEW: Memory Leak Detection**
+- **Object Allocation Tracking**: Track every object allocation and deallocation
+- **Reference Counting**: Monitor reference counts and detect unreleased objects
+- **Memory Growth Patterns**: Identify continuous memory growth
+- **Leak Visualization**: Beautiful HTML reports with charts and metrics
+- **Reference Cycle Detection**: Find and visualize circular references
+- **Top Memory Consumers**: Identify which code uses the most memory
 
 ### **🔥 Enhanced Flamegraph Visualization**
 - **Statistics Panel**: See total functions, calls, execution time, and bottlenecks at a glance
@@ -46,6 +68,9 @@
 ### 🎯 **Core Capabilities**
 - ✅ **Simple API**: Decorator or context manager - your choice
 - ✅ **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
+- ✅ **Async/Await Support**: Full support for modern async Python code
+- ✅ **Comparison Mode**: Side-by-side before/after optimization analysis
+- ✅ **Memory Leak Detection**: Track allocations, find leaks, visualize growth
 - ✅ **Performance Profiling**: CPU time, memory usage, I/O wait tracking
 - ✅ **Flamegraph Support**: Identify bottlenecks with flame graphs
 - ✅ **Call Graph Analysis**: Understand function relationships
@@ -151,6 +176,156 @@ generate_flamegraph(
 ```
 
 **Open `flamegraph.html` and look for wide RED bars - those are your bottlenecks!** 🎯
+
+---
+
+## ⚡ Async/Await Support - Trace Modern Python!
+
+CallFlow Tracer now fully supports async/await patterns:
+
+```python
+import asyncio
+from callflow_tracer.async_tracer import trace_async, trace_scope_async, gather_traced
+
+@trace_async
+async def fetch_data(item_id: int):
+    """Async function with tracing."""
+    await asyncio.sleep(0.1)
+    return f"Data {item_id}"
+
+@trace_async
+async def process_data(item_id: int):
+    """Process data asynchronously."""
+    data = await fetch_data(item_id)
+    await asyncio.sleep(0.05)
+    return data.upper()
+
+async def main():
+    # Trace async code
+    async with trace_scope_async("async_trace.html") as graph:
+        # Concurrent execution
+        tasks = [process_data(i) for i in range(10)]
+        results = await gather_traced(*tasks)
+        print(f"Processed {len(results)} items concurrently")
+    
+    # Get async statistics
+    from callflow_tracer.async_tracer import get_async_stats
+    stats = get_async_stats(graph)
+    print(f"Max concurrent tasks: {stats['max_concurrent_tasks']}")
+    print(f"Efficiency: {stats['efficiency']:.2f}%")
+
+# Run it
+asyncio.run(main())
+```
+
+**Async Features:**
+- 🔄 **Concurrent Execution Tracking**: See which tasks run in parallel
+- ⏱️ **Await Time Analysis**: Separate active time from wait time
+- 📊 **Concurrency Metrics**: Max concurrent tasks, timeline events
+- 🎯 **gather_traced()**: Drop-in replacement for asyncio.gather with tracing
+
+---
+
+## 📊 Comparison Mode - Validate Your Optimizations!
+
+Compare two versions of your code side-by-side:
+
+```python
+from callflow_tracer import trace_scope
+from callflow_tracer.comparison import export_comparison_html
+
+# Before optimization
+def fibonacci_slow(n):
+    if n <= 1:
+        return n
+    return fibonacci_slow(n-1) + fibonacci_slow(n-2)
+
+# After optimization (memoization)
+_cache = {}
+def fibonacci_fast(n):
+    if n in _cache:
+        return _cache[n]
+    if n <= 1:
+        return n
+    result = fibonacci_fast(n-1) + fibonacci_fast(n-2)
+    _cache[n] = result
+    return result
+
+# Trace both versions
+with trace_scope() as graph_before:
+    result = fibonacci_slow(20)
+
+with trace_scope() as graph_after:
+    result = fibonacci_fast(20)
+
+# Generate comparison report
+export_comparison_html(
+    graph_before, graph_after,
+    "optimization_comparison.html",
+    label1="Before (Naive)",
+    label2="After (Memoized)",
+    title="Fibonacci Optimization"
+)
+```
+
+**Open `optimization_comparison.html` to see:**
+- ✅ **Side-by-Side Graphs**: Visual comparison of call patterns
+- 📈 **Performance Metrics**: Time saved, percentage improvement
+- 🟢 **Improvements**: Functions that got faster (green highlighting)
+- 🔴 **Regressions**: Functions that got slower (red highlighting)
+- 📋 **Detailed Table**: Function-by-function comparison
+- 🎯 **Summary Stats**: Added/removed/modified functions
+
+---
+
+## 💾 Memory Leak Detection - Find and Fix Leaks!
+
+Detect memory leaks with comprehensive tracking and visualization:
+
+```python
+from callflow_tracer.memory_leak_detector import detect_leaks, track_allocations
+
+# Method 1: Context Manager
+with detect_leaks("leak_report.html") as detector:
+    # Your code here
+    data = []
+    for i in range(1000):
+        data.append([0] * 1000)  # Potential leak
+        detector.take_snapshot(f"Iteration_{i}")
+
+# Method 2: Decorator
+@track_allocations
+def process_data():
+    leaked_objects = []
+    for i in range(100):
+        leaked_objects.append([0] * 10000)
+    return leaked_objects
+
+result = process_data()
+```
+
+**Memory Leak Detection Features:**
+- 🔍 **Object Tracking**: Track every object allocation
+- 📊 **Growth Patterns**: Detect continuous memory growth
+- 🔄 **Reference Cycles**: Find circular references
+- 📈 **Memory Snapshots**: Compare memory state over time
+- 💡 **Top Consumers**: Identify memory-hungry code
+- 📋 **Beautiful Reports**: HTML visualization with charts
+
+**What You Get:**
+- Memory growth charts
+- Object type distribution
+- Suspected leak detection
+- Reference cycle identification
+- Snapshot comparisons
+- Actionable recommendations
+
+**Common Leak Scenarios Detected:**
+- ✅ Cache that never evicts entries
+- ✅ Event listeners never removed
+- ✅ Database connections not closed
+- ✅ Closures capturing large data
+- ✅ Reference cycles in objects
 
 ---
 

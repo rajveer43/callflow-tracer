@@ -6,6 +6,9 @@ Complete documentation index for CallFlow Tracer.
 
 ## 📚 Documentation Structure
 
+### 🆕 Latest Release Notes
+- See v0.2.4 release notes: [v0_2_4_features.md](v0_2_4_features.md)
+
 ### 🚀 Getting Started
 1. **[README.md](../README.md)** - Main introduction and quick start
 2. **[INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Installation and setup
@@ -63,24 +66,29 @@ Complete documentation index for CallFlow Tracer.
 - [Layout Options](USER_GUIDE.md#using-different-layouts)
 - [Module Filtering](USER_GUIDE.md#module-filtering)
 - [API Reference](API_DOCUMENTATION.md#export-api)
-
 #### **Jupyter Integration**
 - [Setup](USER_GUIDE.md#setup)
 - [Inline Visualization](USER_GUIDE.md#inline-visualization)
 - [Magic Commands](USER_GUIDE.md#magic-commands)
 - [Complete Guide](../examples/JUPYTER_README.md)
-- [API Reference](API_DOCUMENTATION.md#jupyter-api)
 
 #### **Export**
 - [HTML Export](API_DOCUMENTATION.md#export_html)
 - [JSON Export](API_DOCUMENTATION.md#export_json)
 - [SVG Export](ENHANCED_FEATURES.md#4-export-to-svg)
 
+#### **New in v0.2.4**
+- [Async/Await Tracing](v0_2_4_features.md#-asyncawait-tracing)
+- [Comparison Mode](v0_2_4_features.md#-comparison-mode)
+- [Memory Leak Detection](v0_2_4_features.md#-memory-leak-detection)
+- [v0.2.4 Release Notes](v0_2_4_features.md)
+
 ---
 
-## 🎯 By Use Case
+##  By Use Case
 
 ### Finding Performance Bottlenecks
+{{ ... }}
 1. [Quick Performance Check](USER_GUIDE.md#workflow-1-quick-performance-check)
 2. [Flamegraph Analysis](USER_GUIDE.md#flamegraph-analysis)
 3. [Performance Color Scheme](ENHANCED_FEATURES.md#performance--recommended)

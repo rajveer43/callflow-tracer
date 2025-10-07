@@ -7,11 +7,14 @@ Complete API reference for all modules and functions.
 ## Table of Contents
 
 1. [Core Tracing API](#core-tracing-api)
-2. [Profiling API](#profiling-api)
-3. [Export API](#export-api)
-4. [Flamegraph API](#flamegraph-api)
-5. [Jupyter API](#jupyter-api)
-6. [Data Structures](#data-structures)
+2. [Async Tracing API](#async-tracing-api)
+3. [Comparison API](#comparison-api)
+4. [Memory Leak Detection API](#memory-leak-detection-api)
+5. [Profiling API](#profiling-api)
+6. [Export API](#export-api)
+7. [Flamegraph API](#flamegraph-api)
+8. [Jupyter API](#jupyter-api)
+9. [Data Structures](#data-structures)
 
 ---
 
@@ -82,17 +85,91 @@ Note: This function is not thread-safe.
 
 **Example:**
 ```python
-from callflow_tracer import clear_trace
 
-clear_trace()
+### `AsyncCallGraph`
+
+Extended `CallGraph` with async metadata (timeline, await time, concurrency).
+
+---
+
+## Comparison API
+
+### `compare_graphs(before, after)`
+
+Compare two call graphs and return a structured diff.
+
+**Returns:**
+- `dict` with `summary` and per-function differences
+
+---
+
+### `export_comparison_html(before, after, output_file, label1=None, label2=None, title=None)`
+
+Generate a split-screen HTML report highlighting improvements/regressions.
+
+**Example:**
+```python
+from callflow_tracer.comparison import export_comparison_html
+export_comparison_html(before, after, "comparison.html", label1="Before", label2="After")
 ```
+
+---
+
+## Memory Leak Detection API
+
+### `MemoryLeakDetector`
+
+Main detector that orchestrates snapshots, growth analysis, and reporting.
+
+---
+
+### `detect_leaks(output_file=None)`
+
+Context manager to run code while capturing memory snapshots and generating an optional HTML report.
+
+**Example:**
+```python
+from callflow_tracer.memory_leak_detector import detect_leaks
+with detect_leaks("leak_report.html") as detector:
+    do_work()
+    detector.take_snapshot("after_work")
+```
+
+---
+
+### `@track_allocations`
+
+Decorator to track allocations within a function and attach a brief report to stdout or detector state.
+
+---
+
+### `MemorySnapshot(label)`
+
+Capture a point-in-time snapshot of memory and objects. Use `compare_to(other)` to compute diffs.
+
+---
+
+### `find_reference_cycles()`
+
+Return a list of detected reference cycles using the `gc` module.
+
+---
+
+### `get_memory_growth(interval=1.0, iterations=5)`
+
+Measure memory growth over time by sampling at a fixed interval.
+
+---
+
+### `get_top_memory_consumers(limit=10)`
+
+Return the top allocation sites/files by memory consumed (via `tracemalloc`).
 
 ---
 
 ## Profiling API
 
 ### `@profile_function`
-
 Decorator to profile a function's performance.
 
 **Tracks:**
