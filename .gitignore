@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # IDE
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo
@@ -149,8 +149,8 @@ test_output.html
 test_output.json
 decorator_test.html
 context_test.html
-*.html
-*.json
+# *.html
+# *.json
 
 
 NOTES 

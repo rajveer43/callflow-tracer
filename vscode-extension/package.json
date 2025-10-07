@@ -1,0 +1,186 @@
+{
+  "name": "callflow-tracer",
+  "displayName": "CallFlow Tracer",
+  "description": "Visualize Python function call flows with interactive graphs directly in VS Code",
+  "version": "1.0.0",
+  "publisher": "rajveer-rathod",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "python",
+    "callflow",
+    "tracing",
+    "visualization",
+    "debugging",
+    "profiling"
+  ],
+  "activationEvents": [
+    "onCommand:callflow-tracer.traceFile",
+    "onCommand:callflow-tracer.traceSelection",
+    "onCommand:callflow-tracer.showVisualization",
+    "onCommand:callflow-tracer.clearTrace",
+    "onLanguage:python"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "callflow-tracer.traceFile",
+        "title": "CallFlow: Trace Current File",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "callflow-tracer.traceSelection",
+        "title": "CallFlow: Trace Selected Function",
+        "icon": "$(symbol-method)"
+      },
+      {
+        "command": "callflow-tracer.showVisualization",
+        "title": "CallFlow: Show Visualization",
+        "icon": "$(graph-line)"
+      },
+      {
+        "command": "callflow-tracer.clearTrace",
+        "title": "CallFlow: Clear Trace Data",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "callflow-tracer.exportPNG",
+        "title": "CallFlow: Export as PNG"
+      },
+      {
+        "command": "callflow-tracer.exportJSON",
+        "title": "CallFlow: Export as JSON"
+      },
+      {
+        "command": "callflow-tracer.changeLayout",
+        "title": "CallFlow: Change Graph Layout"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceLangId == python",
+          "command": "callflow-tracer.traceFile",
+          "group": "callflow@1"
+        },
+        {
+          "when": "resourceLangId == python && editorHasSelection",
+          "command": "callflow-tracer.traceSelection",
+          "group": "callflow@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceLangId == python",
+          "command": "callflow-tracer.traceFile",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "callflow-tracer.clearTrace",
+          "when": "view == callflowVisualization",
+          "group": "navigation"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "callflow-tracer",
+          "title": "CallFlow Tracer",
+          "icon": "images/activity-bar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "callflow-tracer": [
+        {
+          "type": "webview",
+          "id": "callflowVisualization",
+          "name": "Call Flow Graph"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CallFlow Tracer",
+      "properties": {
+        "callflowTracer.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python interpreter"
+        },
+        "callflowTracer.defaultLayout": {
+          "type": "string",
+          "default": "force",
+          "enum": [
+            "hierarchical",
+            "force",
+            "circular",
+            "radial",
+            "grid",
+            "tree",
+            "tree-horizontal",
+            "timeline",
+            "organic"
+          ],
+          "description": "Default graph layout"
+        },
+        "callflowTracer.defaultSpacing": {
+          "type": "string",
+          "default": "normal",
+          "enum": [
+            "compact",
+            "normal",
+            "relaxed",
+            "wide"
+          ],
+          "description": "Default node spacing"
+        },
+        "callflowTracer.autoTrace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically trace on file save"
+        },
+        "callflowTracer.includeArgs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include function arguments in trace"
+        },
+        "callflowTracer.enableProfiling": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable performance profiling"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "16.x",
+    "eslint": "^8.0.0"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rajveer/callflow-tracer"
+  },
+  "bugs": {
+    "url": "https://github.com/rajveer/callflow-tracer/issues"
+  },
+  "homepage": "https://github.com/rajveer/callflow-tracer#readme",
+  "license": "MIT"
+}

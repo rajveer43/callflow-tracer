@@ -615,7 +615,12 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                     <option value="hierarchical">Hierarchical</option>
                     <option value="force">Force-Directed</option>
                     <option value="circular">Circular</option>
+                    <option value="radial">Radial Tree</option>
+                    <option value="grid">Grid</option>
+                    <option value="tree">Tree (Vertical)</option>
+                    <option value="tree-horizontal">Tree (Horizontal)</option>
                     <option value="timeline">Timeline</option>
+                    <option value="organic">Organic (Spring)</option>
                 </select>
             </div>
             
@@ -631,6 +636,16 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                 <label for="filter">Filter by module:</label>
                 <select id="filter">
                     <option value="">All modules</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="node-spacing">Node Spacing:</label>
+                <select id="node-spacing" onchange="updateLayoutSpacing(this.value)">
+                    <option value="100">Compact</option>
+                    <option value="150" selected>Normal</option>
+                    <option value="200">Relaxed</option>
+                    <option value="300">Wide</option>
                 </select>
             </div>
             
@@ -696,9 +711,6 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
             // Store node and edge data for filtering
             window.allNodes = new vis.DataSet(nodes);
             window.allEdges = new vis.DataSet(edges);
-            
-            // Store network reference globally for export functions
-            window.network = network;
 
             // Network options
             var options = {{
@@ -748,6 +760,9 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
             }};
 
             var network = new vis.Network(container, data, options);
+            
+            // Store network reference globally for export and control functions
+            window.network = network;
 
             // Set initial layout and physics for footer controls
             document.getElementById('physics').value = "true";
@@ -803,7 +818,8 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                     document.getElementById('physics').value = "true";
                 }} else if (layoutType === "circular") {{
                     // Create circular layout by updating node positions
-                    var radius = 300;
+                    var spacing = window.currentSpacing || 150;
+                    var radius = spacing * 2; // Radius scales with spacing
                     var centerX = 400;
                     var centerY = 300;
                     var angleStep = 2 * Math.PI / nodes.length;
@@ -838,7 +854,8 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                     }});
                     
                     var startX = 100;
-                    var spacing = Math.max(150, (window.innerWidth - 200) / sorted.length);
+                    var customSpacing = window.currentSpacing || 150;
+                    var spacing = Math.max(customSpacing, (window.innerWidth - 200) / sorted.length);
                     var timelineY = 300;
                     
                     var updatedNodes = sorted.map(function(node, i) {{
@@ -862,6 +879,217 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                     
                     // Fit the view after layout
                     setTimeout(() => network.fit(), 100);
+                    
+                }} else if (layoutType === "radial") {{
+                    // Radial tree layout - nodes arranged in concentric circles by depth
+                    var nodeMap = {{}};
+                    nodes.forEach(n => nodeMap[n.id] = n);
+                    
+                    // Build adjacency list
+                    var adjacency = {{}};
+                    nodes.forEach(n => adjacency[n.id] = []);
+                    edges.forEach(e => {{
+                        if (!adjacency[e.from]) adjacency[e.from] = [];
+                        adjacency[e.from].push(e.to);
+                    }});
+                    
+                    // Find root nodes (nodes with no incoming edges)
+                    var inDegree = {{}};
+                    nodes.forEach(n => inDegree[n.id] = 0);
+                    edges.forEach(e => inDegree[e.to] = (inDegree[e.to] || 0) + 1);
+                    var roots = nodes.filter(n => inDegree[n.id] === 0).map(n => n.id);
+                    if (roots.length === 0 && nodes.length > 0) roots = [nodes[0].id];
+                    
+                    // BFS to assign levels
+                    var levels = {{}};
+                    var queue = roots.map(r => [r, 0]);
+                    var visited = new Set();
+                    
+                    while (queue.length > 0) {{
+                        var [nodeId, level] = queue.shift();
+                        if (visited.has(nodeId)) continue;
+                        visited.add(nodeId);
+                        levels[nodeId] = level;
+                        
+                        (adjacency[nodeId] || []).forEach(child => {{
+                            if (!visited.has(child)) {{
+                                queue.push([child, level + 1]);
+                            }}
+                        }});
+                    }}
+                    
+                    // Assign unvisited nodes to level 0
+                    nodes.forEach(n => {{
+                        if (!(n.id in levels)) levels[n.id] = 0;
+                    }});
+                    
+                    // Group nodes by level
+                    var levelGroups = {{}};
+                    Object.keys(levels).forEach(id => {{
+                        var level = levels[id];
+                        if (!levelGroups[level]) levelGroups[level] = [];
+                        levelGroups[level].push(id);
+                    }});
+                    
+                    // Calculate radial positions with custom spacing
+                    var centerX = 400, centerY = 300;
+                    var radiusStep = window.currentSpacing || 150;
+                    var updatedNodes = [];
+                    
+                    Object.keys(levelGroups).forEach(level => {{
+                        var levelNodes = levelGroups[level];
+                        var radius = level * radiusStep + 50;
+                        var angleStep = (2 * Math.PI) / levelNodes.length;
+                        
+                        levelNodes.forEach((nodeId, i) => {{
+                            var angle = i * angleStep;
+                            var node = nodeMap[nodeId];
+                            updatedNodes.push({{
+                                ...node,
+                                x: centerX + radius * Math.cos(angle),
+                                y: centerY + radius * Math.sin(angle),
+                                fixed: {{x: true, y: true}}
+                            }});
+                        }});
+                    }});
+                    
+                    data.nodes.clear();
+                    data.nodes.add(updatedNodes);
+                    
+                    network.setOptions({{
+                        layout: {{hierarchical: false}},
+                        physics: {{enabled: false}}
+                    }});
+                    document.getElementById('layout').value = "radial";
+                    document.getElementById('physics').value = "false";
+                    setTimeout(() => network.fit(), 100);
+                    
+                }} else if (layoutType === "grid") {{
+                    // Grid layout - arrange nodes in a grid pattern
+                    var cols = Math.ceil(Math.sqrt(nodes.length));
+                    var spacing = window.currentSpacing || 200;
+                    var startX = 100, startY = 100;
+                    
+                    var updatedNodes = nodes.map(function(node, i) {{
+                        var row = Math.floor(i / cols);
+                        var col = i % cols;
+                        return {{
+                            ...node,
+                            x: startX + col * spacing,
+                            y: startY + row * spacing,
+                            fixed: {{x: true, y: true}}
+                        }};
+                    }});
+                    
+                    data.nodes.clear();
+                    data.nodes.add(updatedNodes);
+                    
+                    network.setOptions({{
+                        layout: {{hierarchical: false}},
+                        physics: {{enabled: false}}
+                    }});
+                    document.getElementById('layout').value = "grid";
+                    document.getElementById('physics').value = "false";
+                    setTimeout(() => network.fit(), 100);
+                    
+                }} else if (layoutType === "tree") {{
+                    // Vertical tree layout using hierarchical
+                    var resetNodes = nodes.map(function(node) {{
+                        return {{
+                            ...node,
+                            x: undefined,
+                            y: undefined,
+                            fixed: {{x: false, y: false}}
+                        }};
+                    }});
+                    
+                    data.nodes.clear();
+                    data.nodes.add(resetNodes);
+                    
+                    var spacing = window.currentSpacing || 150;
+                    network.setOptions({{
+                        layout: {{
+                            hierarchical: {{
+                                enabled: true,
+                                direction: 'UD',
+                                sortMethod: 'directed',
+                                nodeSpacing: spacing,
+                                levelSeparation: spacing * 1.3,
+                                treeSpacing: spacing * 1.3
+                            }}
+                        }},
+                        physics: {{enabled: false}}
+                    }});
+                    document.getElementById('layout').value = "tree";
+                    document.getElementById('physics').value = "false";
+                    
+                }} else if (layoutType === "tree-horizontal") {{
+                    // Horizontal tree layout
+                    var resetNodes = nodes.map(function(node) {{
+                        return {{
+                            ...node,
+                            x: undefined,
+                            y: undefined,
+                            fixed: {{x: false, y: false}}
+                        }};
+                    }});
+                    
+                    data.nodes.clear();
+                    data.nodes.add(resetNodes);
+                    
+                    var spacing = window.currentSpacing || 150;
+                    network.setOptions({{
+                        layout: {{
+                            hierarchical: {{
+                                enabled: true,
+                                direction: 'LR',
+                                sortMethod: 'directed',
+                                nodeSpacing: spacing,
+                                levelSeparation: spacing * 1.7,
+                                treeSpacing: spacing * 1.3
+                            }}
+                        }},
+                        physics: {{enabled: false}}
+                    }});
+                    document.getElementById('layout').value = "tree-horizontal";
+                    document.getElementById('physics').value = "false";
+                    
+                }} else if (layoutType === "organic") {{
+                    // Organic spring layout with custom physics
+                    var resetNodes = nodes.map(function(node) {{
+                        return {{
+                            ...node,
+                            x: undefined,
+                            y: undefined,
+                            fixed: {{x: false, y: false}}
+                        }};
+                    }});
+                    
+                    data.nodes.clear();
+                    data.nodes.add(resetNodes);
+                    
+                    var spacing = window.currentSpacing || 150;
+                    network.setOptions({{
+                        layout: {{hierarchical: false}},
+                        physics: {{
+                            enabled: true,
+                            solver: 'barnesHut',
+                            barnesHut: {{
+                                gravitationalConstant: -8000,
+                                centralGravity: 0.3,
+                                springLength: spacing,
+                                springConstant: 0.04,
+                                damping: 0.09,
+                                avoidOverlap: 0.5
+                            }},
+                            stabilization: {{
+                                iterations: 200,
+                                fit: true
+                            }}
+                        }}
+                    }});
+                    document.getElementById('layout').value = "organic";
+                    document.getElementById('physics').value = "true";
                 }}
             }};
 
@@ -871,17 +1099,35 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
 
         // Make changeLayout available globally
         window.changeLayout = changeLayout;
+        
+        // Store current layout spacing
+        window.currentSpacing = 150;
+        
+        // Update layout spacing
+        window.updateLayoutSpacing = function(spacing) {{
+            window.currentSpacing = parseInt(spacing);
+            // Re-apply current layout with new spacing
+            var currentLayout = document.getElementById('layout').value;
+            changeLayout(currentLayout);
+        }};
+        
+        // Toggle physics
+        window.togglePhysics = function(enabled) {{
+            if (window.network) {{
+                window.network.setOptions({{ physics: {{ enabled: enabled }} }});
+            }}
+        }};
 
         // Export as PNG
         window.exportToPng = function() {{
             try {{
                 // Wait for network to be ready
-                if (!network) {{
+                if (!window.network) {{
                     throw new Error('Network not initialized');
                 }}
                 
                 // Get the canvas from the network
-                var canvas = network.canvas.frame.canvas;
+                var canvas = window.network.canvas.frame.canvas;
                 if (!canvas) {{
                     throw new Error('Canvas not found. Please wait for the graph to load completely.');
                 }}
@@ -975,13 +1221,16 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
         // Physics toggle (footer)
         document.getElementById('physics').addEventListener('change', function() {{
             var enabled = this.value === 'true';
-            network.setOptions({{ physics: {{ enabled: enabled }} }});
+            if (window.network) {{
+                window.network.setOptions({{ physics: {{ enabled: enabled }} }});
+            }}
         }});
 
             // Layout select (footer)
             document.getElementById('layout').addEventListener('change', function() {{
+                if (!window.network) return;
                 if (this.value === 'hierarchical') {{
-                    network.setOptions({{
+                    window.network.setOptions({{
                         layout: {{
                             hierarchical: {{
                                 enabled: true,
@@ -994,7 +1243,7 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                     document.getElementById('layout').value = "hierarchical";
                     document.getElementById('physics').value = "false";
                 }} else {{
-                    network.setOptions({{
+                    window.network.setOptions({{
                         layout: {{ hierarchical: false }},
                         physics: {{ enabled: true, solver: "forceAtlas2Based" }}
                     }});
@@ -1068,26 +1317,30 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
                 
                 // Fit the network to show all visible nodes
                 setTimeout(() => {{
-                    network.fit({{
-                        animation: {{
-                            duration: 500,
-                            easingFunction: 'easeInOutQuad'
-                        }}
-                    }});
+                    if (window.network) {{
+                        window.network.fit({{
+                            animation: {{
+                                duration: 500,
+                                easingFunction: 'easeInOutQuad'
+                            }}
+                        }});
+                    }}
                 }}, 100);
             }});
 
             // Add some styling on load
-            network.on("stabilizationIterationsDone", function() {{
-                // Keep physics enabled for force-directed by default
-                // network.setOptions({{ physics: false }});
-            }});
+            if (window.network) {{
+                window.network.on("stabilizationIterationsDone", function() {{
+                    // Keep physics enabled for force-directed by default
+                    // window.network.setOptions({{ physics: false }});
+                }});
 
-            // Set initial layout and physics to force-directed and enabled
-            network.setOptions({{
-                layout: {{hierarchical: false}},
-                physics: {{enabled: true, solver: "forceAtlas2Based"}}
-            }});
+                // Set initial layout and physics to force-directed and enabled
+                window.network.setOptions({{
+                    layout: {{hierarchical: false}},
+                    physics: {{enabled: true, solver: "forceAtlas2Based"}}
+                }});
+            }}
             document.getElementById('layout-select').value = "force";
             document.getElementById('layout').value = "force";
             document.getElementById('physics').value = "true";
