@@ -81,7 +81,9 @@ class CallGraph:
         self.edges: Dict[tuple, CallEdge] = {}
         self.call_stack = []
         self.start_time = None
-        self._lock = threading.Lock()
+        # Use RLock because tracing callbacks and DB instrumentation may record
+        # nested calls within the same thread, requiring re-entrant locking.
+        self._lock = threading.RLock()
     
     def add_node(self, name: str, module: str = "") -> CallNode:
         """Add or get a node for the given function."""

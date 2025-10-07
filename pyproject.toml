@@ -45,6 +45,17 @@ dev = [
     "flake8"
 ]
 
+web = [
+    "flask>=2.0",
+    "fastapi>=0.95",
+    "starlette>=0.27",
+    "django>=3.2"
+]
+db = [
+    "sqlalchemy>=1.4",
+    "psycopg2-binary>=2.9"
+]
+
 [project.urls]
 Homepage = "https://github.com/rajveer43/callflow-tracer"
 Repository = "https://github.com/rajveer43/callflow-tracer"
