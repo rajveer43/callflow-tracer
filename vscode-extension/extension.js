@@ -479,17 +479,193 @@ function getWebviewContent(traceData, defaultLayout, defaultSpacing) {
         const network = new vis.Network(container, data, options);
         window.network = network;
         
-        // Layout change handler (same as exporter.py implementation)
+        // Layout change handler with all 9 layouts
+        window.changeLayout = function(layoutType) {
+            if (layoutType === "hierarchical") {
+                var resetNodes = nodes.map(function(node) {
+                    return { ...node, x: undefined, y: undefined, fixed: {x: false, y: false} };
+                });
+                data.nodes.clear();
+                data.nodes.add(resetNodes);
+                network.setOptions({
+                    layout: { hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed' } },
+                    physics: {enabled: false}
+                });
+                document.getElementById('layout').value = "hierarchical";
+                document.getElementById('physics').value = "false";
+            } else if (layoutType === "force") {
+                var resetNodes = nodes.map(function(node) {
+                    return { ...node, x: undefined, y: undefined, fixed: {x: false, y: false} };
+                });
+                data.nodes.clear();
+                data.nodes.add(resetNodes);
+                network.setOptions({
+                    layout: {hierarchical: false},
+                    physics: {enabled: true, solver: "forceAtlas2Based"}
+                });
+                document.getElementById('layout').value = "force";
+                document.getElementById('physics').value = "true";
+            } else if (layoutType === "circular") {
+                var spacing = window.currentSpacing || 150;
+                var radius = spacing * 2;
+                var centerX = 400, centerY = 300;
+                var angleStep = 2 * Math.PI / nodes.length;
+                var updatedNodes = nodes.map(function(node, i) {
+                    var angle = i * angleStep;
+                    return { ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle), fixed: {x: true, y: true} };
+                });
+                data.nodes.clear();
+                data.nodes.add(updatedNodes);
+                network.setOptions({ layout: {hierarchical: false}, physics: {enabled: false} });
+                document.getElementById('layout').value = "circular";
+                document.getElementById('physics').value = "false";
+                setTimeout(() => network.fit(), 100);
+            } else if (layoutType === "radial") {
+                var nodeMap = {};
+                nodes.forEach(n => nodeMap[n.id] = n);
+                var adjacency = {};
+                nodes.forEach(n => adjacency[n.id] = []);
+                edges.forEach(e => {
+                    if (!adjacency[e.from]) adjacency[e.from] = [];
+                    adjacency[e.from].push(e.to);
+                });
+                var inDegree = {};
+                nodes.forEach(n => inDegree[n.id] = 0);
+                edges.forEach(e => inDegree[e.to] = (inDegree[e.to] || 0) + 1);
+                var roots = nodes.filter(n => inDegree[n.id] === 0).map(n => n.id);
+                if (roots.length === 0 && nodes.length > 0) roots = [nodes[0].id];
+                var levels = {};
+                var queue = roots.map(r => [r, 0]);
+                var visited = new Set();
+                while (queue.length > 0) {
+                    var [nodeId, level] = queue.shift();
+                    if (visited.has(nodeId)) continue;
+                    visited.add(nodeId);
+                    levels[nodeId] = level;
+                    (adjacency[nodeId] || []).forEach(child => {
+                        if (!visited.has(child)) queue.push([child, level + 1]);
+                    });
+                }
+                nodes.forEach(n => { if (!(n.id in levels)) levels[n.id] = 0; });
+                var levelGroups = {};
+                Object.keys(levels).forEach(id => {
+                    var level = levels[id];
+                    if (!levelGroups[level]) levelGroups[level] = [];
+                    levelGroups[level].push(id);
+                });
+                var centerX = 400, centerY = 300;
+                var radiusStep = window.currentSpacing || 150;
+                var updatedNodes = [];
+                Object.keys(levelGroups).forEach(level => {
+                    var levelNodes = levelGroups[level];
+                    var radius = level * radiusStep + 50;
+                    var angleStep = (2 * Math.PI) / levelNodes.length;
+                    levelNodes.forEach((nodeId, i) => {
+                        var angle = i * angleStep;
+                        var node = nodeMap[nodeId];
+                        updatedNodes.push({ ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle), fixed: {x: true, y: true} });
+                    });
+                });
+                data.nodes.clear();
+                data.nodes.add(updatedNodes);
+                network.setOptions({ layout: {hierarchical: false}, physics: {enabled: false} });
+                document.getElementById('layout').value = "radial";
+                document.getElementById('physics').value = "false";
+                setTimeout(() => network.fit(), 100);
+            } else if (layoutType === "grid") {
+                var cols = Math.ceil(Math.sqrt(nodes.length));
+                var spacing = window.currentSpacing || 200;
+                var startX = 100, startY = 100;
+                var updatedNodes = nodes.map(function(node, i) {
+                    var row = Math.floor(i / cols);
+                    var col = i % cols;
+                    return { ...node, x: startX + col * spacing, y: startY + row * spacing, fixed: {x: true, y: true} };
+                });
+                data.nodes.clear();
+                data.nodes.add(updatedNodes);
+                network.setOptions({ layout: {hierarchical: false}, physics: {enabled: false} });
+                document.getElementById('layout').value = "grid";
+                document.getElementById('physics').value = "false";
+                setTimeout(() => network.fit(), 100);
+            } else if (layoutType === "tree") {
+                var resetNodes = nodes.map(function(node) {
+                    return { ...node, x: undefined, y: undefined, fixed: {x: false, y: false} };
+                });
+                data.nodes.clear();
+                data.nodes.add(resetNodes);
+                var spacing = window.currentSpacing || 150;
+                network.setOptions({
+                    layout: { hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed', nodeSpacing: spacing, levelSeparation: spacing * 1.3, treeSpacing: spacing * 1.3 } },
+                    physics: {enabled: false}
+                });
+                document.getElementById('layout').value = "tree";
+                document.getElementById('physics').value = "false";
+            } else if (layoutType === "tree-horizontal") {
+                var resetNodes = nodes.map(function(node) {
+                    return { ...node, x: undefined, y: undefined, fixed: {x: false, y: false} };
+                });
+                data.nodes.clear();
+                data.nodes.add(resetNodes);
+                var spacing = window.currentSpacing || 150;
+                network.setOptions({
+                    layout: { hierarchical: { enabled: true, direction: 'LR', sortMethod: 'directed', nodeSpacing: spacing, levelSeparation: spacing * 1.7, treeSpacing: spacing * 1.3 } },
+                    physics: {enabled: false}
+                });
+                document.getElementById('layout').value = "tree-horizontal";
+                document.getElementById('physics').value = "false";
+            } else if (layoutType === "timeline") {
+                var sorted = nodes.slice().sort(function(a, b) { return a.total_time - b.total_time; });
+                var startX = 100;
+                var customSpacing = window.currentSpacing || 150;
+                var spacing = Math.max(customSpacing, 800 / sorted.length);
+                var timelineY = 300;
+                var updatedNodes = sorted.map(function(node, i) {
+                    return { ...node, x: startX + i * spacing, y: timelineY, fixed: {x: true, y: true} };
+                });
+                data.nodes.clear();
+                data.nodes.add(updatedNodes);
+                network.setOptions({ layout: {hierarchical: false}, physics: {enabled: false} });
+                document.getElementById('layout').value = "timeline";
+                document.getElementById('physics').value = "false";
+                setTimeout(() => network.fit(), 100);
+            } else if (layoutType === "organic") {
+                var resetNodes = nodes.map(function(node) {
+                    return { ...node, x: undefined, y: undefined, fixed: {x: false, y: false} };
+                });
+                data.nodes.clear();
+                data.nodes.add(resetNodes);
+                var spacing = window.currentSpacing || 150;
+                network.setOptions({
+                    layout: {hierarchical: false},
+                    physics: {
+                        enabled: true,
+                        solver: 'barnesHut',
+                        barnesHut: {
+                            gravitationalConstant: -8000,
+                            centralGravity: 0.3,
+                            springLength: spacing,
+                            springConstant: 0.04,
+                            damping: 0.09,
+                            avoidOverlap: 0.5
+                        },
+                        stabilization: { iterations: 200, fit: true }
+                    }
+                });
+                document.getElementById('layout').value = "organic";
+                document.getElementById('physics').value = "true";
+            }
+        };
+        
+        // Event listeners
         document.getElementById('layout').addEventListener('change', function() {
-            const layoutType = this.value;
-            // ... (include all layout logic from exporter.py)
+            window.changeLayout(this.value);
         });
         
         document.getElementById('spacing').addEventListener('change', function() {
             const spacingMap = { compact: 100, normal: 150, relaxed: 200, wide: 300 };
             window.currentSpacing = spacingMap[this.value];
             const currentLayout = document.getElementById('layout').value;
-            // Re-apply layout
+            window.changeLayout(currentLayout);
         });
         
         document.getElementById('physics').addEventListener('change', function() {
