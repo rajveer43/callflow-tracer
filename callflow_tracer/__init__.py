@@ -14,7 +14,6 @@ Example usage:
     with trace_scope("output.html"):
         my_function()
 """
-
 __version__ = "0.2.1"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
@@ -60,11 +59,28 @@ def trace_and_export(output_file: str, include_args: bool = False):
     """
     return trace_scope(output_file, include_args)
 
+
+# Async utilities
+try:
+    from .async_tracer import atrace, async_trace_scope  # type: ignore
+except Exception:  # Optional in environments without async usage
+    # Provide dummies to avoid import errors when not installed/used
+    def atrace(func):
+        return func
+    def async_trace_scope(*args, **kwargs):  # type: ignore
+        from contextlib import contextmanager
+        @contextmanager
+        def _noop():
+            yield None
+        return _noop()
+
 # Make the main functions available at package level
 __all__ = [
     # Core tracing functions
     'trace',
     'trace_scope',
+    'atrace',
+    'async_trace_scope',
     'get_current_graph',
     'clear_trace',
     

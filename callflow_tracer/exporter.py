@@ -88,7 +88,7 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool, profiling
         nodes.append({
             'id': node['full_name'],
             'label': node['name'],
-            'title': f"Module: {node['module']}\\nCalls: {node['call_count']}\\nTotal Time: {node['total_time']:.3f}s\\nAvg Time: {node['avg_time']:.3f}s",
+            'title': f"Module: {node['module']}\nCalls: {node['call_count']}\nTotal Time: {node['total_time']:.3f}s\nAvg Time: {node['avg_time']:.3f}s",
             'group': node['module'] or 'main',
             'value': node['call_count'],
             'color': _get_node_color(node['avg_time'])
@@ -107,13 +107,41 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool, profiling
     
     # Generate the HTML template
     vis_js_cdn = "https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" if include_vis_js else ""
-    
+
     # Prepare profiling stats display
     profiling_present = profiling_stats is not None
     memory_current = profiling_stats.get('memory', {}).get('current_mb', 0.0) if profiling_present else 0.0
     memory_peak = profiling_stats.get('memory', {}).get('peak_mb', 0.0) if profiling_present else 0.0
     io_wait = profiling_stats.get('io_wait', 0.0) if profiling_present else 0.0
     cpu_profile_text = profiling_stats.get('cpu', {}).get('profile_data', '') if profiling_present else ''
+
+    # Build dynamic HTML snippets separately to avoid backslashes inside f-string expressions
+    vis_script_tag = (
+        f'<script type="text/javascript" src="{vis_js_cdn}"></script>' if include_vis_js else ''
+    )
+
+    memory_current_html = (
+        f'<div class="stat"><div class="stat-value">{memory_current:.2f}MB</div>'
+        f'<div class="stat-label">Memory (current)</div></div>'
+        if profiling_present else ''
+    )
+
+    memory_peak_html = (
+        f'<div class="stat"><div class="stat-value">{memory_peak:.2f}MB</div>'
+        f'<div class="stat-label">Memory (peak)</div></div>'
+        if profiling_present else ''
+    )
+
+    io_wait_html = (
+        f'<div class="stat"><div class="stat-value">{io_wait:.3f}s</div>'
+        f'<div class="stat-label">I/O wait</div></div>'
+        if profiling_present else ''
+    )
+
+    cpu_profile_section = (
+        f'<details><summary><strong>CPU Profile (cProfile)</strong></summary><pre>{cpu_profile_text}</pre></details>'
+        if profiling_present and cpu_profile_text else ''
+    )
 
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -212,7 +240,7 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool, profiling
             border-radius: 3px;
         }}
     </style>
-    {f'<script type="text/javascript" src="{vis_js_cdn}"></script>' if include_vis_js else ''}
+    {vis_script_tag}
 </head>
 <body>
     <div class="container">
@@ -234,15 +262,15 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool, profiling
                 <div class="stat-value">{graph_data['metadata']['duration']:.3f}s</div>
                 <div class="stat-label">Total Duration</div>
             </div>
-            {f"<div class=\"stat\"><div class=\"stat-value\">{memory_current:.2f}MB</div><div class=\"stat-label\">Memory (current)</div></div>" if profiling_present else ''}
-            {f"<div class=\"stat\"><div class=\"stat-value\">{memory_peak:.2f}MB</div><div class=\"stat-label\">Memory (peak)</div></div>" if profiling_present else ''}
-            {f"<div class=\"stat\"><div class=\"stat-value\">{io_wait:.3f}s</div><div class=\"stat-label\">I/O wait</div></div>" if profiling_present else ''}
+            {memory_current_html}
+            {memory_peak_html}
+            {io_wait_html}
         </div>
         
         <div id="network"></div>
         
         <div class="controls">
-            {f"<details><summary><strong>CPU Profile (cProfile)</strong></summary><pre>{cpu_profile_text}</pre></details>" if profiling_present and cpu_profile_text else ''}
+            {cpu_profile_section}
             <div class="control-group">
                 <label for="physics">Physics:</label>
                 <select id="physics">
