@@ -235,7 +235,7 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
         nodes.append({
             'id': node['full_name'],
             'label': node['name'],
-            'title': f"Module: {node['module']}\\nCalls: {node['call_count']}\\nTotal Time: {node['total_time']:.3f}s\\nAvg Time: {node['avg_time']:.3f}s",
+            'title': f"Module: {node['module']}\nCalls: {node['call_count']}\nTotal Time: {node['total_time']:.3f}s\nAvg Time: {node['avg_time']:.3f}s",
             'group': node['module'] or 'main',
             'value': node['call_count'],
             'color': _get_node_color(node['avg_time']),
