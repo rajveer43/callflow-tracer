@@ -151,6 +151,6 @@ decorator_test.html
 context_test.html
 # *.html
 # *.json
-
+/vscode-extension/node_modules/*
 
 NOTES 
