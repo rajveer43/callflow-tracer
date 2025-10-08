@@ -53,6 +53,31 @@ def export_html(graph: CallGraph, output_path: Union[str, Path],
         f.write(html_content)
 
 
+def export_html_3d(graph: CallGraph, output_path: Union[str, Path],
+                   title: str = "Call Flow Graph 3D",
+                   profiling_stats: Optional[dict] = None) -> None:
+    """
+    Export call graph to interactive 3D HTML format using Three.js.
+    
+    Args:
+        graph: The CallGraph instance to export
+        output_path: Path where to save the HTML file
+        title: Title for the HTML page
+        profiling_stats: Optional profiling statistics
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Convert graph to JSON
+    graph_data = graph.to_dict()
+    
+    # Generate 3D HTML content
+    html_content = _generate_html_3d(graph_data, title, profiling_stats)
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+
 def export_graph(graph: CallGraph, output_path: Union[str, Path], 
                 format: str = "auto", **kwargs) -> None:
     """
@@ -61,7 +86,7 @@ def export_graph(graph: CallGraph, output_path: Union[str, Path],
     Args:
         graph: The CallGraph instance to export
         output_path: Path where to save the file
-        format: Export format ("json", "html", or "auto" to detect from extension)
+        format: Export format ("json", "html", "html3d", or "auto" to detect from extension)
         **kwargs: Additional arguments passed to specific exporters
     """
     output_path = Path(output_path)
@@ -71,10 +96,12 @@ def export_graph(graph: CallGraph, output_path: Union[str, Path],
     
     if format == "json":
         export_json(graph, output_path)
+    elif format == "html3d":
+        export_html_3d(graph, output_path, **kwargs)
     elif format == "html":
         export_html(graph, output_path, **kwargs)
     else:
-        raise ValueError(f"Unsupported format: {format}. Supported formats: json, html")
+        raise ValueError(f"Unsupported format: {format}. Supported formats: json, html, html3d")
 
 
 def _analyze_cpu_profile(cpu_profile_text: str) -> dict:
@@ -1480,6 +1507,1837 @@ def _generate_html(graph_data: dict, title: str, include_vis_js: bool,
         cpu_profile_block=cpu_profile_block,
         vis_js_script=vis_js_script
     )
+
+
+def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[dict] = None) -> str:
+    """
+    Generate 3D interactive HTML visualization using Three.js.
+    
+    Args:
+        graph_data: Dictionary containing graph data
+        title: Title for the page
+        profiling_stats: Optional profiling statistics
+        
+    Returns:
+        Complete HTML string with 3D visualization
+    """
+    nodes = graph_data['nodes']
+    edges = graph_data['edges']
+    
+    # Prepare node data for 3D
+    nodes_3d = []
+    for node in nodes:
+        nodes_3d.append({
+            'id': node['full_name'],
+            'label': node['name'],
+            'module': node.get('module', ''),
+            'call_count': node['call_count'],
+            'total_time': node['total_time'],
+            'avg_time': node['avg_time']
+        })
+    
+    # Prepare edge data for 3D
+    edges_3d = []
+    for edge in edges:
+        edges_3d.append({
+            'source': edge['caller'],
+            'target': edge['callee'],
+            'call_count': edge['call_count'],
+            'total_time': edge['total_time']
+        })
+    
+    nodes_json = json.dumps(nodes_3d)
+    edges_json = json.dumps(edges_3d)
+    
+    html_template = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+        }}
+        #container {{
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }}
+        #controls {{
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            max-width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }}
+        #controls::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        #controls::-webkit-scrollbar-track {{
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }}
+        #controls::-webkit-scrollbar-thumb {{
+            background: #4fc3f7;
+            border-radius: 4px;
+        }}
+        #controls::-webkit-scrollbar-thumb:hover {{
+            background: #29b6f6;
+        }}
+        #stats {{
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }}
+        #minimap {{
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #4fc3f7;
+            border-radius: 5px;
+            z-index: 100;
+        }}
+        #timeline {{
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 230px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none;
+        }}
+        #timeline-controls {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }}
+        #timeline-slider {{
+            flex: 1;
+            height: 8px;
+        }}
+        .timeline-btn {{
+            padding: 5px 10px;
+            background: #4fc3f7;
+            border: none;
+            border-radius: 3px;
+            color: #000;
+            cursor: pointer;
+            font-size: 12px;
+        }}
+        #filterPanel {{
+            position: absolute;
+            top: 20px;
+            left: 350px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none;
+            max-width: 300px;
+        }}
+        .filter-item {{
+            margin-bottom: 10px;
+        }}
+        .filter-item label {{
+            font-size: 11px;
+            color: #aaa;
+        }}
+        .filter-item input {{
+            width: 100%;
+            padding: 5px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            color: #fff;
+        }}
+        #heatmapLegend {{
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none;
+        }}
+        .heatmap-gradient {{
+            width: 30px;
+            height: 200px;
+            background: linear-gradient(to top, #00ff00, #ffff00, #ff0000);
+            border-radius: 3px;
+            margin: 10px auto;
+        }}
+        #info {{
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            max-width: 400px;
+            display: none;
+        }}
+        h2 {{
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+        }}
+        .control-group {{
+            margin-bottom: 15px;
+        }}
+        label {{
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }}
+        select, input[type="range"] {{
+            width: 100%;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+        }}
+        button {{
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: #4fc3f7;
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 13px;
+        }}
+        button:hover {{
+            background: #29b6f6;
+        }}
+        button:active {{
+            transform: scale(0.98);
+        }}
+        .section-header {{
+            color: #4fc3f7;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }}
+        .stat-item {{
+            margin-bottom: 10px;
+            font-size: 14px;
+        }}
+        .stat-label {{
+            color: #aaa;
+            font-size: 12px;
+        }}
+        .stat-value {{
+            color: #4fc3f7;
+            font-size: 18px;
+            font-weight: bold;
+        }}
+        .legend {{
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }}
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }}
+        .legend-color {{
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }}
+        #loading {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #4fc3f7;
+            z-index: 200;
+        }}
+        .checkbox-group {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }}
+        .checkbox-group input[type="checkbox"] {{
+            width: auto;
+            margin-right: 8px;
+        }}
+        .checkbox-group label {{
+            margin: 0;
+            cursor: pointer;
+        }}
+        #tooltip {{
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            font-size: 12px;
+            max-width: 300px;
+        }}
+        .perf-indicator {{
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div id="loading">Loading 3D Visualization...</div>
+    <div id="container"></div>
+    
+    <div id="controls">
+        <h2 style="margin-bottom: 15px;">🎮 Controls</h2>
+        
+        <div class="section-header">📐 Layout</div>
+        <div class="control-group">
+            <label>Algorithm</label>
+            <select id="layout">
+                <option value="force">Force-Directed 3D</option>
+                <option value="sphere">Sphere</option>
+                <option value="helix">Helix</option>
+                <option value="grid">Grid 3D</option>
+                <option value="tree">Tree 3D</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Spread: <span id="spreadValue">500</span></label>
+            <input type="range" id="spread" min="100" max="1000" value="500">
+        </div>
+        
+        <div class="section-header">🎨 Appearance</div>
+        <div class="control-group">
+            <label>Node Size: <span id="nodeSizeValue">15</span></label>
+            <input type="range" id="nodeSize" min="5" max="30" value="15">
+        </div>
+        <div class="control-group">
+            <label>Edge Thickness: <span id="edgeThicknessValue">2</span></label>
+            <input type="range" id="edgeThickness" min="1" max="5" value="2">
+        </div>
+        <div class="control-group">
+            <label>Node Opacity: <span id="nodeOpacityValue">100</span>%</label>
+            <input type="range" id="nodeOpacity" min="10" max="100" value="100">
+        </div>
+        <div class="control-group">
+            <label>Background Color</label>
+            <select id="bgColor">
+                <option value="0x0a0a0a">Dark (Default)</option>
+                <option value="0x1a1a2e">Deep Blue</option>
+                <option value="0x0f0f23">Midnight</option>
+                <option value="0x1a0a1a">Purple Dark</option>
+                <option value="0xffffff">White</option>
+            </select>
+        </div>
+        
+        <div class="section-header">✨ Effects</div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showLabels" checked>
+            <label for="showLabels">Show Labels</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showEdges" checked>
+            <label for="showEdges">Show Connections</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="pulseNodes" checked>
+            <label for="pulseNodes">Pulse Animation</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="particleEffect">
+            <label for="particleEffect">Particle Effects</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showCallPath">
+            <label for="showCallPath">Highlight Paths</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showGrid">
+            <label for="showGrid">Show Grid</label>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="showStats" checked>
+            <label for="showStats">Show Stats Panel</label>
+        </div>
+        
+        <div class="section-header">🎬 Animation</div>
+        <div class="control-group">
+            <label>Rotation Speed: <span id="rotationSpeedValue">0</span></label>
+            <input type="range" id="rotationSpeed" min="0" max="100" value="0">
+        </div>
+        <div class="control-group">
+            <label>Flow Speed: <span id="animSpeedValue">5</span>x</label>
+            <input type="range" id="animSpeed" min="1" max="10" value="5">
+        </div>
+        <button onclick="playAnimation()">▶️ Play Flow Animation</button>
+        <button onclick="toggleAnimation()">⏸️ Pause/Resume</button>
+        <button onclick="toggleTimeline()">⏱️ Timeline Playback</button>
+        
+        <div class="section-header">🎯 Navigation</div>
+        <button onclick="resetView()">🔄 Reset View</button>
+        <button onclick="focusOnSlowest()">🐌 Focus Slowest</button>
+        <button onclick="focusOnFastest()">⚡ Focus Fastest</button>
+        <button onclick="fitToView()">📏 Fit All Nodes</button>
+        <button onclick="topView()">⬆️ Top View</button>
+        <button onclick="sideView()">↔️ Side View</button>
+        
+        <div class="section-header">🔍 Analysis</div>
+        <button onclick="showCallChain()">🔗 Show Call Chain</button>
+        <button onclick="highlightModule()">📦 Filter by Module</button>
+        <button onclick="findNode()">🔎 Search Function</button>
+        <button onclick="showHotspots()">🔥 Show Hotspots</button>
+        <button onclick="compareNodes()">⚖️ Compare Selected</button>
+        <button onclick="toggleFilters()">🎛️ Advanced Filters</button>
+        <button onclick="toggleHeatmap()">🔥 Heatmap Mode</button>
+        <button onclick="showCriticalPath()">🛤️ Critical Path</button>
+        <button onclick="clusterByModule()">📦 Auto-Cluster</button>
+        
+        <div class="section-header">💾 Export</div>
+        <button onclick="takeScreenshot()">📸 Screenshot</button>
+        <button onclick="exportData()">💾 Export JSON</button>
+        <button onclick="copyToClipboard()">📋 Copy Stats</button>
+        
+        <div class="legend">
+            <h5 style="margin-bottom: 10px; color: #4fc3f7;">Performance</h5>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #00ff00;"></div>
+                <span>Fast (&lt;10ms)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffff00;"></div>
+                <span>Medium (10-100ms)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff0000;"></div>
+                <span>Slow (&gt;100ms)</span>
+            </div>
+            <h5 style="margin: 15px 0 10px 0; color: #4fc3f7;">Connections</h5>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #00d4ff;"></div>
+                <span>Call Flow Lines</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff9800;"></div>
+                <span>Direction Arrows</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="stats">
+        <h2>📊 Statistics</h2>
+        <div class="stat-item">
+            <div class="stat-label">Functions</div>
+            <div class="stat-value">{graph_data['metadata']['total_nodes']}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Relationships</div>
+            <div class="stat-value">{graph_data['metadata']['total_edges']}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Duration</div>
+            <div class="stat-value">{graph_data['metadata']['duration']:.3f}s</div>
+        </div>
+    </div>
+    
+    <div id="info">
+        <h2>ℹ️ Node Information</h2>
+        <div id="infoContent"></div>
+    </div>
+    
+    <div id="tooltip"></div>
+    
+    <!-- Minimap -->
+    <canvas id="minimap"></canvas>
+    
+    <!-- Timeline Playback -->
+    <div id="timeline">
+        <div id="timeline-controls">
+            <button class="timeline-btn" onclick="timelinePlay()">▶️</button>
+            <button class="timeline-btn" onclick="timelinePause()">⏸️</button>
+            <button class="timeline-btn" onclick="timelineReset()">⏮️</button>
+            <input type="range" id="timeline-slider" min="0" max="100" value="0">
+            <span id="timeline-time" style="color: #4fc3f7; font-size: 12px;">0.00s</span>
+            <select id="timeline-speed" style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 3px;">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="2">2x</option>
+                <option value="5">5x</option>
+                <option value="10">10x</option>
+            </select>
+        </div>
+        <div style="font-size: 11px; color: #aaa;">Timeline: Replay execution chronologically</div>
+    </div>
+    
+    <!-- Advanced Filters -->
+    <div id="filterPanel">
+        <h3 style="color: #4fc3f7; margin-bottom: 10px;">🎛️ Advanced Filters</h3>
+        <div class="filter-item">
+            <label>Min Execution Time (ms)</label>
+            <input type="number" id="filter-min-time" value="0" min="0">
+        </div>
+        <div class="filter-item">
+            <label>Max Execution Time (ms)</label>
+            <input type="number" id="filter-max-time" value="10000" min="0">
+        </div>
+        <div class="filter-item">
+            <label>Min Call Count</label>
+            <input type="number" id="filter-min-calls" value="0" min="0">
+        </div>
+        <div class="filter-item">
+            <label>Function Name Contains</label>
+            <input type="text" id="filter-name" placeholder="Enter text...">
+        </div>
+        <button onclick="applyFilters()" style="width: 100%; margin-top: 10px;">Apply Filters</button>
+        <button onclick="clearFilters()" style="width: 100%; margin-top: 5px; background: #666;">Clear Filters</button>
+    </div>
+    
+    <!-- Heatmap Legend -->
+    <div id="heatmapLegend">
+        <h4 style="color: #4fc3f7; margin-bottom: 10px;">🔥 Heatmap</h4>
+        <div class="heatmap-gradient"></div>
+        <div style="font-size: 11px; color: #aaa; text-align: center;">
+            <div>Slow</div>
+            <div style="margin: 60px 0;">Medium</div>
+            <div>Fast</div>
+        </div>
+        <select id="heatmap-metric" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 5px; margin-top: 10px;">
+            <option value="time">Execution Time</option>
+            <option value="calls">Call Frequency</option>
+            <option value="total">Total Time</option>
+        </select>
+    </div>
+
+    <script>
+        const nodes = {nodes_json};
+        const edges = {edges_json};
+        
+        let scene, camera, renderer, controls;
+        let nodeMeshes = [];
+        let nodeSprites = [];
+        let edgeLines = [];
+        let particles = [];
+        let animationId;
+        let isAnimating = true;
+        let rotationSpeed = 0;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let selectedNode = null;
+        let hoveredNode = null;
+        
+        function init() {{
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            scene.fog = new THREE.Fog(0x0a0a0a, 1000, 3000);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
+            camera.position.z = 1000;
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({{ antialias: true }});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1, 2000);
+            pointLight.position.set(500, 500, 500);
+            scene.add(pointLight);
+            
+            // Create graph
+            createGraph('force');
+            
+            // Event listeners
+            document.getElementById('layout').addEventListener('change', (e) => {{
+                createGraph(e.target.value);
+            }});
+            
+            document.getElementById('nodeSize').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('nodeSizeValue').textContent = value;
+                updateNodeSize(value);
+            }});
+            
+            document.getElementById('spread').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('spreadValue').textContent = value;
+                createGraph(document.getElementById('layout').value);
+            }});
+            
+            document.getElementById('rotationSpeed').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('rotationSpeedValue').textContent = value;
+                rotationSpeed = value / 1000;
+            }});
+            
+            document.getElementById('nodeOpacity').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('nodeOpacityValue').textContent = value;
+                updateNodeOpacity(value / 100);
+            }});
+            
+            document.getElementById('bgColor').addEventListener('change', (e) => {{
+                scene.background = new THREE.Color(parseInt(e.target.value));
+            }});
+            
+            document.getElementById('showGrid').addEventListener('change', (e) => {{
+                toggleGrid(e.target.checked);
+            }});
+            
+            document.getElementById('showStats').addEventListener('change', (e) => {{
+                document.getElementById('stats').style.display = e.target.checked ? 'block' : 'none';
+            }});
+            
+            // New feature event listeners
+            document.getElementById('showLabels').addEventListener('change', (e) => {{
+                toggleLabels(e.target.checked);
+            }});
+            
+            document.getElementById('showEdges').addEventListener('change', (e) => {{
+                toggleEdges(e.target.checked);
+            }});
+            
+            document.getElementById('pulseNodes').addEventListener('change', (e) => {{
+                // Pulse animation handled in animate loop
+            }});
+            
+            document.getElementById('particleEffect').addEventListener('change', (e) => {{
+                if (e.target.checked) {{
+                    createParticles();
+                }} else {{
+                    removeParticles();
+                }}
+            }});
+            
+            // New control event listeners
+            document.getElementById('showCallPath').addEventListener('change', (e) => {{
+                // Call path highlighting handled in showCallChain
+            }});
+            
+            document.getElementById('edgeThickness').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('edgeThicknessValue').textContent = value;
+                updateEdgeThickness(value);
+            }});
+            
+            document.getElementById('animSpeed').addEventListener('input', (e) => {{
+                const value = parseInt(e.target.value);
+                document.getElementById('animSpeedValue').textContent = value;
+            }});
+            
+            // Mouse events for interaction
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('click', onMouseClick);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', onKeyDown);
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+            
+            // Start animation
+            animate();
+        }}
+        
+        function createGraph(layoutType) {{
+            // Clear existing
+            nodeMeshes.forEach(mesh => scene.remove(mesh));
+            nodeSprites.forEach(sprite => scene.remove(sprite));
+            edgeLines.forEach(line => scene.remove(line));
+            nodeMeshes = [];
+            nodeSprites = [];
+            edgeLines = [];
+            
+            const spread = parseInt(document.getElementById('spread').value);
+            const positions = calculatePositions(layoutType, nodes.length, spread);
+            
+            // Create node map
+            const nodeMap = {{}};
+            nodes.forEach((node, i) => {{
+                nodeMap[node.id] = i;
+            }});
+            
+            // Create nodes
+            nodes.forEach((node, i) => {{
+                const pos = positions[i];
+                const color = getNodeColor(node.avg_time);
+                const size = Math.max(5, Math.min(30, node.call_count * 2));
+                
+                const geometry = new THREE.SphereGeometry(size, 32, 32);
+                const material = new THREE.MeshPhongMaterial({{
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.3,
+                    shininess: 100
+                }});
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.userData = node;
+                
+                scene.add(mesh);
+                nodeMeshes.push(mesh);
+                
+                // Add label sprite
+                const sprite = createTextSprite(node.label);
+                sprite.position.set(pos.x, pos.y + size + 10, pos.z);
+                scene.add(sprite);
+                nodeSprites.push(sprite);
+            }});
+            
+            // Create edges with arrows
+            edges.forEach(edge => {{
+                const sourceIdx = nodeMap[edge.source];
+                const targetIdx = nodeMap[edge.target];
+                
+                if (sourceIdx !== undefined && targetIdx !== undefined) {{
+                    const sourcePos = nodeMeshes[sourceIdx].position;
+                    const targetPos = nodeMeshes[targetIdx].position;
+                    
+                    // Create line
+                    const geometry = new THREE.BufferGeometry().setFromPoints([
+                        sourcePos,
+                        targetPos
+                    ]);
+                    
+                    // Brighter, more visible color
+                    const material = new THREE.LineBasicMaterial({{
+                        color: 0x00d4ff,  // Bright cyan
+                        opacity: 0.7,
+                        transparent: true,
+                        linewidth: 2
+                    }});
+                    
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    edgeLines.push(line);
+                    
+                    // Create arrow head at target
+                    const direction = new THREE.Vector3().subVectors(targetPos, sourcePos);
+                    const length = direction.length();
+                    direction.normalize();
+                    
+                    // Position arrow slightly before target node
+                    const arrowPos = targetPos.clone().sub(direction.multiplyScalar(20));
+                    
+                    // Create cone for arrow head
+                    const arrowGeometry = new THREE.ConeGeometry(5, 15, 8);
+                    const arrowMaterial = new THREE.MeshBasicMaterial({{
+                        color: 0xff9800,  // Orange for visibility
+                        transparent: true,
+                        opacity: 0.9
+                    }});
+                    const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+                    
+                    // Position and orient arrow
+                    arrow.position.copy(arrowPos);
+                    arrow.lookAt(targetPos);
+                    arrow.rotateX(Math.PI / 2);  // Align cone tip with direction
+                    
+                    scene.add(arrow);
+                    edgeLines.push(arrow);  // Store for toggling
+                }}
+            }});
+        }}
+        
+        function calculatePositions(layoutType, count, spread) {{
+            const positions = [];
+            
+            if (layoutType === 'force') {{
+                // Force-directed 3D
+                for (let i = 0; i < count; i++) {{
+                    positions.push({{
+                        x: (Math.random() - 0.5) * spread,
+                        y: (Math.random() - 0.5) * spread,
+                        z: (Math.random() - 0.5) * spread
+                    }});
+                }}
+            }} else if (layoutType === 'sphere') {{
+                // Sphere layout
+                const radius = spread / 2;
+                for (let i = 0; i < count; i++) {{
+                    const phi = Math.acos(-1 + (2 * i) / count);
+                    const theta = Math.sqrt(count * Math.PI) * phi;
+                    
+                    positions.push({{
+                        x: radius * Math.cos(theta) * Math.sin(phi),
+                        y: radius * Math.sin(theta) * Math.sin(phi),
+                        z: radius * Math.cos(phi)
+                    }});
+                }}
+            }} else if (layoutType === 'helix') {{
+                // Helix layout
+                const radius = spread / 3;
+                const height = spread;
+                for (let i = 0; i < count; i++) {{
+                    const angle = (i / count) * Math.PI * 4;
+                    const y = (i / count) * height - height / 2;
+                    
+                    positions.push({{
+                        x: radius * Math.cos(angle),
+                        y: y,
+                        z: radius * Math.sin(angle)
+                    }});
+                }}
+            }} else if (layoutType === 'grid') {{
+                // 3D Grid
+                const size = Math.ceil(Math.pow(count, 1/3));
+                const spacing = spread / size;
+                let idx = 0;
+                
+                for (let x = 0; x < size && idx < count; x++) {{
+                    for (let y = 0; y < size && idx < count; y++) {{
+                        for (let z = 0; z < size && idx < count; z++) {{
+                            positions.push({{
+                                x: (x - size/2) * spacing,
+                                y: (y - size/2) * spacing,
+                                z: (z - size/2) * spacing
+                            }});
+                            idx++;
+                        }}
+                    }}
+                }}
+            }} else if (layoutType === 'tree') {{
+                // 3D Tree
+                const levels = Math.ceil(Math.log2(count + 1));
+                const levelHeight = spread / levels;
+                let idx = 0;
+                
+                for (let level = 0; level < levels && idx < count; level++) {{
+                    const nodesInLevel = Math.pow(2, level);
+                    const radius = spread / (level + 2);
+                    
+                    for (let i = 0; i < nodesInLevel && idx < count; i++) {{
+                        const angle = (i / nodesInLevel) * Math.PI * 2;
+                        positions.push({{
+                            x: radius * Math.cos(angle),
+                            y: level * levelHeight - spread/2,
+                            z: radius * Math.sin(angle)
+                        }});
+                        idx++;
+                    }}
+                }}
+            }}
+            
+            return positions;
+        }}
+        
+        function getNodeColor(avgTime) {{
+            if (avgTime > 0.1) return 0xff0000; // Red - slow
+            if (avgTime > 0.01) return 0xffff00; // Yellow - medium
+            return 0x00ff00; // Green - fast
+        }}
+        
+        function createTextSprite(text) {{
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'Bold 20px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText(text, canvas.width / 2, canvas.height / 2 + 7);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({{ map: texture }});
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(100, 25, 1);
+            
+            return sprite;
+        }}
+        
+        function updateNodeSize(size) {{
+            nodeMeshes.forEach(mesh => {{
+                mesh.geometry.dispose();
+                mesh.geometry = new THREE.SphereGeometry(size, 32, 32);
+            }});
+        }}
+        
+        function resetView() {{
+            camera.position.set(0, 0, 1000);
+            controls.reset();
+        }}
+        
+        function toggleAnimation() {{
+            isAnimating = !isAnimating;
+        }}
+        
+        function animate() {{
+            animationId = requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Rotation animation
+            if (isAnimating && rotationSpeed > 0) {{
+                nodeMeshes.forEach(mesh => {{
+                    mesh.rotation.y += rotationSpeed;
+                }});
+            }}
+            
+            // Pulse animation
+            if (document.getElementById('pulseNodes').checked) {{
+                nodeMeshes.forEach((mesh, i) => {{
+                    const scale = 1 + Math.sin(time * 2 + i * 0.5) * 0.1;
+                    mesh.scale.set(scale, scale, scale);
+                }});
+            }}
+            
+            // Animate particles
+            if (particles.length > 0) {{
+                particles.forEach(particle => {{
+                    particle.position.y += particle.velocity;
+                    particle.material.opacity -= 0.01;
+                    if (particle.material.opacity <= 0) {{
+                        scene.remove(particle);
+                        particles = particles.filter(p => p !== particle);
+                    }}
+                }});
+            }}
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }}
+        
+        function onWindowResize() {{
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }}
+        
+        function toggleLabels(show) {{
+            nodeSprites.forEach(sprite => {{
+                sprite.visible = show;
+            }});
+        }}
+        
+        function toggleEdges(show) {{
+            edgeLines.forEach(line => {{
+                line.visible = show;
+            }});
+        }}
+        
+        function createParticles() {{
+            // Create particle system around nodes
+            nodeMeshes.forEach(mesh => {{
+                for (let i = 0; i < 5; i++) {{
+                    const geometry = new THREE.SphereGeometry(2, 8, 8);
+                    const material = new THREE.MeshBasicMaterial({{
+                        color: 0x4fc3f7,
+                        transparent: true,
+                        opacity: 0.8
+                    }});
+                    const particle = new THREE.Mesh(geometry, material);
+                    particle.position.copy(mesh.position);
+                    particle.position.x += (Math.random() - 0.5) * 50;
+                    particle.position.z += (Math.random() - 0.5) * 50;
+                    particle.velocity = Math.random() * 2 + 1;
+                    scene.add(particle);
+                    particles.push(particle);
+                }}
+            }});
+        }}
+        
+        function removeParticles() {{
+            particles.forEach(particle => {{
+                scene.remove(particle);
+            }});
+            particles = [];
+        }}
+        
+        function onMouseMove(event) {{
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(nodeMeshes);
+            
+            const tooltip = document.getElementById('tooltip');
+            
+            if (intersects.length > 0) {{
+                const mesh = intersects[0].object;
+                const node = mesh.userData;
+                hoveredNode = mesh;
+                
+                // Show tooltip
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.clientX + 10 + 'px';
+                tooltip.style.top = event.clientY + 10 + 'px';
+                tooltip.innerHTML = `
+                    <strong>${{node.label}}</strong><br>
+                    Module: ${{node.module || 'N/A'}}<br>
+                    Calls: ${{node.call_count}}<br>
+                    Avg Time: ${{node.avg_time.toFixed(4)}}s<br>
+                    Total Time: ${{node.total_time.toFixed(4)}}s
+                `;
+                
+                // Highlight hovered node
+                mesh.material.emissiveIntensity = 0.8;
+                document.body.style.cursor = 'pointer';
+            }} else {{
+                tooltip.style.display = 'none';
+                if (hoveredNode && hoveredNode !== selectedNode) {{
+                    hoveredNode.material.emissiveIntensity = 0.3;
+                }}
+                hoveredNode = null;
+                document.body.style.cursor = 'default';
+            }}
+        }}
+        
+        function onMouseClick(event) {{
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(nodeMeshes);
+            
+            // Deselect previous
+            if (selectedNode) {{
+                selectedNode.material.emissiveIntensity = 0.3;
+            }}
+            
+            if (intersects.length > 0) {{
+                const mesh = intersects[0].object;
+                const node = mesh.userData;
+                selectedNode = mesh;
+                
+                // Highlight selected node
+                mesh.material.emissiveIntensity = 1.0;
+                
+                // Show info panel
+                const info = document.getElementById('info');
+                const infoContent = document.getElementById('infoContent');
+                info.style.display = 'block';
+                
+                const perfColor = node.avg_time > 0.1 ? '#ff0000' : 
+                                 node.avg_time > 0.01 ? '#ffff00' : '#00ff00';
+                
+                infoContent.innerHTML = `
+                    <div style="margin-bottom: 10px;">
+                        <strong style="font-size: 16px;">${{node.label}}</strong>
+                    </div>
+                    <div style="margin-bottom: 5px;">
+                        <span class="perf-indicator" style="background: ${{perfColor}};"></span>
+                        <strong>Performance:</strong> ${{node.avg_time > 0.1 ? 'Slow' : node.avg_time > 0.01 ? 'Medium' : 'Fast'}}
+                    </div>
+                    <div><strong>Module:</strong> ${{node.module || 'N/A'}}</div>
+                    <div><strong>Call Count:</strong> ${{node.call_count}}</div>
+                    <div><strong>Average Time:</strong> ${{node.avg_time.toFixed(4)}}s</div>
+                    <div><strong>Total Time:</strong> ${{node.total_time.toFixed(4)}}s</div>
+                `;
+            }} else {{
+                selectedNode = null;
+                document.getElementById('info').style.display = 'none';
+            }}
+        }}
+        
+        function focusOnSlowest() {{
+            // Find slowest node
+            let slowest = null;
+            let maxTime = 0;
+            
+            nodeMeshes.forEach(mesh => {{
+                if (mesh.userData.avg_time > maxTime) {{
+                    maxTime = mesh.userData.avg_time;
+                    slowest = mesh;
+                }}
+            }});
+            
+            if (slowest) {{
+                // Animate camera to slowest node
+                const targetPos = slowest.position.clone();
+                const distance = 300;
+                
+                const newPos = {{
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    z: targetPos.z + distance
+                }};
+                
+                // Simple camera animation
+                const startPos = camera.position.clone();
+                const duration = 1000; // ms
+                const startTime = Date.now();
+                
+                function animateCamera() {{
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3); // ease out cubic
+                    
+                    camera.position.x = startPos.x + (newPos.x - startPos.x) * eased;
+                    camera.position.y = startPos.y + (newPos.y - startPos.y) * eased;
+                    camera.position.z = startPos.z + (newPos.z - startPos.z) * eased;
+                    
+                    controls.target.copy(targetPos);
+                    
+                    if (progress < 1) {{
+                        requestAnimationFrame(animateCamera);
+                    }}
+                }}
+                
+                animateCamera();
+                
+                // Select the node
+                if (selectedNode) {{
+                    selectedNode.material.emissiveIntensity = 0.3;
+                }}
+                selectedNode = slowest;
+                slowest.material.emissiveIntensity = 1.0;
+            }}
+        }}
+        
+        function takeScreenshot() {{
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'callflow-3d-screenshot.png';
+            link.href = dataURL;
+            link.click();
+        }}
+        
+        function focusOnFastest() {{
+            let fastest = null;
+            let minTime = Infinity;
+            
+            nodeMeshes.forEach(mesh => {{
+                if (mesh.userData.avg_time < minTime) {{
+                    minTime = mesh.userData.avg_time;
+                    fastest = mesh;
+                }}
+            }});
+            
+            if (fastest) {{
+                animateCameraToNode(fastest);
+            }}
+        }}
+        
+        function animateCameraToNode(targetMesh) {{
+            const targetPos = targetMesh.position.clone();
+            const distance = 300;
+            const newPos = {{
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z + distance
+            }};
+            
+            const startPos = camera.position.clone();
+            const duration = 1000;
+            const startTime = Date.now();
+            
+            function animateCamera() {{
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                camera.position.x = startPos.x + (newPos.x - startPos.x) * eased;
+                camera.position.y = startPos.y + (newPos.y - startPos.y) * eased;
+                camera.position.z = startPos.z + (newPos.z - startPos.z) * eased;
+                controls.target.copy(targetPos);
+                
+                if (progress < 1) requestAnimationFrame(animateCamera);
+            }}
+            
+            animateCamera();
+            
+            if (selectedNode) selectedNode.material.emissiveIntensity = 0.3;
+            selectedNode = targetMesh;
+            targetMesh.material.emissiveIntensity = 1.0;
+        }}
+        
+        function showCallChain() {{
+            if (!selectedNode) {{
+                alert('Please select a node first by clicking on it');
+                return;
+            }}
+            
+            // Highlight all nodes in call chain
+            const chainNodes = new Set();
+            const chainEdges = new Set();
+            
+            function findCallChain(nodeId, visited = new Set()) {{
+                if (visited.has(nodeId)) return;
+                visited.add(nodeId);
+                chainNodes.add(nodeId);
+                
+                edges.forEach(edge => {{
+                    if (edge.source === nodeId) {{
+                        chainEdges.add(edge);
+                        findCallChain(edge.target, visited);
+                    }}
+                }});
+            }}
+            
+            findCallChain(selectedNode.userData.id);
+            
+            // Dim non-chain nodes
+            nodeMeshes.forEach(mesh => {{
+                if (chainNodes.has(mesh.userData.id)) {{
+                    mesh.material.emissiveIntensity = 0.8;
+                }} else {{
+                    mesh.material.opacity = 0.2;
+                }}
+            }});
+            
+            // Highlight chain edges
+            edgeLines.forEach((line, idx) => {{
+                const edgeIdx = Math.floor(idx / 2);
+                if (edgeIdx < edges.length && chainEdges.has(edges[edgeIdx])) {{
+                    line.material.opacity = 1.0;
+                }} else {{
+                    line.material.opacity = 0.1;
+                }}
+            }});
+        }}
+        
+        function highlightModule() {{
+            const modules = [...new Set(nodes.map(n => n.module).filter(m => m))];
+            if (modules.length === 0) {{
+                alert('No module information available');
+                return;
+            }}
+            
+            const module = prompt('Enter module name to highlight:\\n' + modules.join('\\n'));
+            if (!module) return;
+            
+            nodeMeshes.forEach(mesh => {{
+                if (mesh.userData.module === module) {{
+                    mesh.material.emissiveIntensity = 1.0;
+                    mesh.scale.set(1.5, 1.5, 1.5);
+                }} else {{
+                    mesh.material.opacity = 0.3;
+                }}
+            }});
+        }}
+        
+        function playAnimation() {{
+            let currentIndex = 0;
+            const animSpeed = parseInt(document.getElementById('animSpeed').value);
+            const delay = 1000 / animSpeed;
+            
+            function animateNext() {{
+                if (currentIndex > 0) {{
+                    nodeMeshes[currentIndex - 1].material.emissiveIntensity = 0.3;
+                }}
+                
+                if (currentIndex < nodeMeshes.length) {{
+                    const mesh = nodeMeshes[currentIndex];
+                    mesh.material.emissiveIntensity = 1.0;
+                    animateCameraToNode(mesh);
+                    currentIndex++;
+                    setTimeout(animateNext, delay);
+                }} else {{
+                    nodeMeshes.forEach(m => m.material.emissiveIntensity = 0.3);
+                }}
+            }}
+            
+            animateNext();
+        }}
+        
+        function exportData() {{
+            const data = {{
+                nodes: nodes,
+                edges: edges,
+                metadata: {{
+                    exported: new Date().toISOString(),
+                    layout: document.getElementById('layout').value,
+                    nodeCount: nodes.length,
+                    edgeCount: edges.length
+                }}
+            }};
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {{ type: 'application/json' }});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'callflow-3d-data.json';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }}
+        
+        function updateEdgeThickness(thickness) {{
+            // Update line thickness (note: linewidth may not work in all browsers)
+            edgeLines.forEach(line => {{
+                if (line.type === 'Line') {{
+                    line.material.linewidth = thickness;
+                }}
+            }});
+        }}
+        
+        function onKeyDown(event) {{
+            switch(event.key) {{
+                case 'r':
+                case 'R':
+                    resetView();
+                    break;
+                case 's':
+                case 'S':
+                    if (event.ctrlKey || event.metaKey) {{
+                        event.preventDefault();
+                        takeScreenshot();
+                    }}
+                    break;
+                case 'f':
+                case 'F':
+                    focusOnSlowest();
+                    break;
+                case 'h':
+                case 'H':
+                    document.getElementById('controls').style.display = 
+                        document.getElementById('controls').style.display === 'none' ? 'block' : 'none';
+                    break;
+                case 'p':
+                case 'P':
+                    playAnimation();
+                    break;
+                case 'Escape':
+                    // Reset all highlighting
+                    nodeMeshes.forEach(mesh => {{
+                        mesh.material.opacity = 1.0;
+                        mesh.material.emissiveIntensity = 0.3;
+                        mesh.scale.set(1, 1, 1);
+                    }});
+                    edgeLines.forEach(line => {{
+                        line.material.opacity = line.type === 'Line' ? 0.7 : 0.9;
+                    }});
+                    break;
+            }}
+        }}
+        
+        // NEW FEATURES
+        let gridHelper = null;
+        let comparedNodes = [];
+        let heatmapEnabled = false;
+        let timelineData = [];
+        let timelineIndex = 0;
+        let timelinePlaying = false;
+        
+        function updateNodeOpacity(opacity) {{
+            nodeMeshes.forEach(mesh => {{
+                mesh.material.opacity = opacity;
+            }});
+        }}
+        
+        function toggleGrid(show) {{
+            if (show && !gridHelper) {{
+                gridHelper = new THREE.GridHelper(1000, 20, 0x444444, 0x222222);
+                scene.add(gridHelper);
+            }} else if (!show && gridHelper) {{
+                scene.remove(gridHelper);
+                gridHelper = null;
+            }}
+        }}
+        
+        function fitToView() {{
+            if (nodeMeshes.length === 0) return;
+            
+            const box = new THREE.Box3();
+            nodeMeshes.forEach(mesh => box.expandByObject(mesh));
+            
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5; // Add padding
+            
+            camera.position.set(center.x, center.y, center.z + cameraZ);
+            controls.target.copy(center);
+            controls.update();
+        }}
+        
+        function topView() {{
+            const target = controls.target.clone();
+            camera.position.set(target.x, target.y + 800, target.z);
+            camera.lookAt(target);
+            controls.update();
+        }}
+        
+        function sideView() {{
+            const target = controls.target.clone();
+            camera.position.set(target.x + 800, target.y, target.z);
+            camera.lookAt(target);
+            controls.update();
+        }}
+        
+        function findNode() {{
+            const searchTerm = prompt('Enter function name to search:');
+            if (!searchTerm) return;
+            
+            const found = nodeMeshes.filter(mesh => 
+                mesh.userData.label.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            
+            if (found.length === 0) {{
+                alert('No functions found matching: ' + searchTerm);
+                return;
+            }}
+            
+            // Highlight all found nodes
+            nodeMeshes.forEach(mesh => {{
+                if (found.includes(mesh)) {{
+                    mesh.material.emissiveIntensity = 1.0;
+                    mesh.scale.set(1.3, 1.3, 1.3);
+                }} else {{
+                    mesh.material.opacity = 0.2;
+                }}
+            }});
+            
+            // Focus on first result
+            if (found.length > 0) {{
+                animateCameraToNode(found[0]);
+                alert(`Found ${{found.length}} function(s) matching "${{searchTerm}}"`);
+            }}
+        }}
+        
+        function showHotspots() {{
+            // Find top 3 slowest functions
+            const sorted = [...nodeMeshes].sort((a, b) => 
+                b.userData.total_time - a.userData.total_time
+            );
+            const hotspots = sorted.slice(0, Math.min(3, sorted.length));
+            
+            // Highlight hotspots
+            nodeMeshes.forEach(mesh => {{
+                if (hotspots.includes(mesh)) {{
+                    mesh.material.emissiveIntensity = 1.0;
+                    mesh.scale.set(1.5, 1.5, 1.5);
+                }} else {{
+                    mesh.material.opacity = 0.3;
+                }}
+            }});
+            
+            // Show info
+            const info = hotspots.map((m, i) => 
+                `${{i+1}}. ${{m.userData.label}}: ${{m.userData.total_time.toFixed(4)}}s`
+            ).join('\\n');
+            alert('🔥 Performance Hotspots:\\n\\n' + info);
+        }}
+        
+        function compareNodes() {{
+            if (comparedNodes.length === 0) {{
+                alert('Click on nodes to select them for comparison, then click this button again.');
+                return;
+            }}
+            
+            if (comparedNodes.length < 2) {{
+                alert('Please select at least 2 nodes to compare.');
+                return;
+            }}
+            
+            const comparison = comparedNodes.map(mesh => {{
+                const node = mesh.userData;
+                return `${{node.label}}:\\n` +
+                       `  Calls: ${{node.call_count}}\\n` +
+                       `  Avg Time: ${{node.avg_time.toFixed(4)}}s\\n` +
+                       `  Total Time: ${{node.total_time.toFixed(4)}}s`;
+            }}).join('\\n\\n');
+            
+            alert('⚖️ Node Comparison:\\n\\n' + comparison);
+            comparedNodes = [];
+        }}
+        
+        function copyToClipboard() {{
+            const stats = `CallFlow 3D Visualization Stats\\n` +
+                         `================================\\n` +
+                         `Functions: ${{nodes.length}}\\n` +
+                         `Relationships: ${{edges.length}}\\n` +
+                         `Layout: ${{document.getElementById('layout').value}}\\n` +
+                         `Exported: ${{new Date().toLocaleString()}}`;
+            
+            navigator.clipboard.writeText(stats).then(() => {{
+                alert('✅ Stats copied to clipboard!');
+            }}).catch(() => {{
+                alert('❌ Failed to copy to clipboard');
+            }});
+        }}
+        
+        // HEATMAP MODE
+        function toggleHeatmap() {{
+            heatmapEnabled = !heatmapEnabled;
+            const legend = document.getElementById('heatmapLegend');
+            legend.style.display = heatmapEnabled ? 'block' : 'none';
+            
+            if (heatmapEnabled) {{
+                applyHeatmap();
+            }} else {{
+                // Reset to default colors
+                nodeMeshes.forEach(mesh => {{
+                    const color = getNodeColor(mesh.userData.avg_time);
+                    mesh.material.color.setHex(color);
+                }});
+            }}
+        }}
+        
+        function applyHeatmap() {{
+            const metric = document.getElementById('heatmap-metric').value;
+            
+            // Find min and max values for normalization
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            
+            nodeMeshes.forEach(mesh => {{
+                let value;
+                if (metric === 'time') {{
+                    value = mesh.userData.avg_time;
+                }} else if (metric === 'calls') {{
+                    value = mesh.userData.call_count;
+                }} else {{
+                    value = mesh.userData.total_time;
+                }}
+                minVal = Math.min(minVal, value);
+                maxVal = Math.max(maxVal, value);
+            }});
+            
+            // Apply heatmap colors
+            nodeMeshes.forEach(mesh => {{
+                let value;
+                if (metric === 'time') {{
+                    value = mesh.userData.avg_time;
+                }} else if (metric === 'calls') {{
+                    value = mesh.userData.call_count;
+                }} else {{
+                    value = mesh.userData.total_time;
+                }}
+                
+                // Normalize to 0-1
+                const normalized = (value - minVal) / (maxVal - minVal || 1);
+                
+                // Create gradient color (green -> yellow -> red)
+                let color;
+                if (normalized < 0.5) {{
+                    // Green to Yellow
+                    const t = normalized * 2;
+                    color = new THREE.Color(t, 1, 0);
+                }} else {{
+                    // Yellow to Red
+                    const t = (normalized - 0.5) * 2;
+                    color = new THREE.Color(1, 1 - t, 0);
+                }}
+                
+                mesh.material.color = color;
+                mesh.material.emissive = color;
+                mesh.material.emissiveIntensity = 0.3;
+            }});
+        }}
+        
+        // Listen for heatmap metric changes
+        document.getElementById('heatmap-metric').addEventListener('change', () => {{
+            if (heatmapEnabled) {{
+                applyHeatmap();
+            }}
+        }});
+        
+        // CRITICAL PATH
+        function showCriticalPath() {{
+            // Build adjacency list
+            const adjacency = {{}};
+            nodes.forEach(n => adjacency[n.id] = []);
+            edges.forEach(e => {{
+                if (!adjacency[e.source]) adjacency[e.source] = [];
+                adjacency[e.source].push({{ target: e.target, time: e.total_time }});
+            }});
+            
+            // Find longest path using DFS with memoization
+            const memo = {{}};
+            
+            function dfs(nodeId) {{
+                if (memo[nodeId]) return memo[nodeId];
+                
+                let maxPath = {{ length: 0, time: 0, path: [nodeId] }};
+                
+                if (adjacency[nodeId]) {{
+                    adjacency[nodeId].forEach(edge => {{
+                        const subPath = dfs(edge.target);
+                        const totalTime = edge.time + subPath.time;
+                        
+                        if (totalTime > maxPath.time) {{
+                            maxPath = {{
+                                length: subPath.length + 1,
+                                time: totalTime,
+                                path: [nodeId, ...subPath.path]
+                            }};
+                        }}
+                    }});
+                }}
+                
+                memo[nodeId] = maxPath;
+                return maxPath;
+            }}
+            
+            // Find critical path from all root nodes
+            let criticalPath = {{ length: 0, time: 0, path: [] }};
+            nodes.forEach(node => {{
+                const path = dfs(node.id);
+                if (path.time > criticalPath.time) {{
+                    criticalPath = path;
+                }}
+            }});
+            
+            if (criticalPath.path.length === 0) {{
+                alert('No critical path found');
+                return;
+            }}
+            
+            // Highlight critical path
+            const pathSet = new Set(criticalPath.path);
+            
+            nodeMeshes.forEach(mesh => {{
+                if (pathSet.has(mesh.userData.id)) {{
+                    mesh.material.emissiveIntensity = 1.0;
+                    mesh.material.color.setHex(0xff0000); // Red for critical path
+                    mesh.scale.set(1.3, 1.3, 1.3);
+                }} else {{
+                    mesh.material.opacity = 0.2;
+                }}
+            }});
+            
+            // Highlight critical edges
+            edgeLines.forEach((line, idx) => {{
+                const edgeIdx = Math.floor(idx / 2);
+                if (edgeIdx < edges.length) {{
+                    const edge = edges[edgeIdx];
+                    const inPath = pathSet.has(edge.source) && pathSet.has(edge.target);
+                    line.material.opacity = inPath ? 1.0 : 0.1;
+                    if (inPath && line.type === 'Line') {{
+                        line.material.color.setHex(0xff0000);
+                    }}
+                }}
+            }});
+            
+            alert(`🛤️ Critical Path Found!\\n\\nLength: ${{criticalPath.length}} functions\\nTotal Time: ${{criticalPath.time.toFixed(4)}}s\\n\\nPath: ${{criticalPath.path.slice(0, 5).join(' → ')}}${{criticalPath.path.length > 5 ? '...' : ''}}`);
+        }}
+        
+        // AUTO-CLUSTER BY MODULE
+        function clusterByModule() {{
+            // Group nodes by module
+            const modules = {{}};
+            nodeMeshes.forEach(mesh => {{
+                const module = mesh.userData.module || 'unknown';
+                if (!modules[module]) modules[module] = [];
+                modules[module].push(mesh);
+            }});
+            
+            const moduleNames = Object.keys(modules);
+            if (moduleNames.length === 0) {{
+                alert('No module information available');
+                return;
+            }}
+            
+            // Position clusters in a circle
+            const angleStep = (2 * Math.PI) / moduleNames.length;
+            const clusterRadius = 500;
+            
+            moduleNames.forEach((moduleName, i) => {{
+                const angle = i * angleStep;
+                const clusterX = Math.cos(angle) * clusterRadius;
+                const clusterZ = Math.sin(angle) * clusterRadius;
+                
+                const moduleNodes = modules[moduleName];
+                const innerRadius = Math.sqrt(moduleNodes.length) * 30;
+                
+                // Arrange nodes within cluster in a circle
+                moduleNodes.forEach((mesh, j) => {{
+                    const innerAngle = (j / moduleNodes.length) * Math.PI * 2;
+                    mesh.position.x = clusterX + Math.cos(innerAngle) * innerRadius;
+                    mesh.position.y = 0;
+                    mesh.position.z = clusterZ + Math.sin(innerAngle) * innerRadius;
+                    
+                    // Color by module
+                    const hue = (i / moduleNames.length) * 360;
+                    mesh.material.color.setHSL(hue / 360, 0.7, 0.5);
+                }});
+                
+                // Create cluster boundary (optional visual)
+                const boundaryGeometry = new THREE.RingGeometry(innerRadius + 20, innerRadius + 25, 32);
+                const boundaryMaterial = new THREE.MeshBasicMaterial({{ 
+                    color: 0x4fc3f7, 
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.3
+                }});
+                const boundary = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+                boundary.position.set(clusterX, 0, clusterZ);
+                boundary.rotation.x = Math.PI / 2;
+                scene.add(boundary);
+            }});
+            
+            // Fit view to see all clusters
+            setTimeout(() => fitToView(), 100);
+            
+            alert(`📦 Clustered into ${{moduleNames.length}} modules:\\n\\n${{moduleNames.join('\\n')}}`);
+        }}
+        
+        // TIMELINE FUNCTIONS
+        function toggleTimeline() {{
+            const panel = document.getElementById('timeline');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }}
+        
+        function timelinePlay() {{
+            timelinePlaying = true;
+            playTimelineAnimation();
+        }}
+        
+        function timelinePause() {{
+            timelinePlaying = false;
+        }}
+        
+        function timelineReset() {{
+            timelineIndex = 0;
+            timelinePlaying = false;
+            document.getElementById('timeline-slider').value = 0;
+            document.getElementById('timeline-time').textContent = '0.00s';
+        }}
+        
+        function playTimelineAnimation() {{
+            if (!timelinePlaying) return;
+            
+            const speed = parseFloat(document.getElementById('timeline-speed').value);
+            const maxIndex = nodeMeshes.length - 1;
+            
+            if (timelineIndex <= maxIndex) {{
+                // Highlight current node
+                nodeMeshes.forEach((mesh, i) => {{
+                    if (i === timelineIndex) {{
+                        mesh.material.emissiveIntensity = 1.0;
+                        animateCameraToNode(mesh);
+                    }} else if (i < timelineIndex) {{
+                        mesh.material.emissiveIntensity = 0.5;
+                    }} else {{
+                        mesh.material.opacity = 0.2;
+                    }}
+                }});
+                
+                // Update slider and time
+                const progress = (timelineIndex / maxIndex) * 100;
+                document.getElementById('timeline-slider').value = progress;
+                
+                const currentTime = nodeMeshes[timelineIndex].userData.total_time;
+                document.getElementById('timeline-time').textContent = currentTime.toFixed(2) + 's';
+                
+                timelineIndex++;
+                setTimeout(() => playTimelineAnimation(), 1000 / speed);
+            }} else {{
+                timelinePause();
+                timelineReset();
+            }}
+        }}
+        
+        // FILTER FUNCTIONS
+        function toggleFilters() {{
+            const panel = document.getElementById('filterPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }}
+        
+        function applyFilters() {{
+            const minTime = parseFloat(document.getElementById('filter-min-time').value) / 1000;
+            const maxTime = parseFloat(document.getElementById('filter-max-time').value) / 1000;
+            const minCalls = parseInt(document.getElementById('filter-min-calls').value);
+            const nameFilter = document.getElementById('filter-name').value.toLowerCase();
+            
+            let visibleCount = 0;
+            nodeMeshes.forEach(mesh => {{
+                const node = mesh.userData;
+                const visible = node.avg_time >= minTime && 
+                               node.avg_time <= maxTime &&
+                               node.call_count >= minCalls &&
+                               (nameFilter === '' || node.label.toLowerCase().includes(nameFilter));
+                mesh.visible = visible;
+                if (visible) visibleCount++;
+            }});
+            
+            // Also filter sprites
+            nodeSprites.forEach((sprite, i) => {{
+                sprite.visible = nodeMeshes[i].visible;
+            }});
+            
+            alert(`🎛️ Filter Applied\\n\\nShowing ${{visibleCount}} of ${{nodeMeshes.length}} functions`);
+        }}
+        
+        function clearFilters() {{
+            document.getElementById('filter-min-time').value = 0;
+            document.getElementById('filter-max-time').value = 10000;
+            document.getElementById('filter-min-calls').value = 0;
+            document.getElementById('filter-name').value = '';
+            
+            nodeMeshes.forEach(mesh => {{
+                mesh.visible = true;
+                mesh.material.opacity = 1.0;
+            }});
+            nodeSprites.forEach(sprite => sprite.visible = true);
+            
+            alert('✅ Filters cleared');
+        }}
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>'''
+    
+    return html_template
 
 
 def _get_node_color(avg_time: float) -> str:

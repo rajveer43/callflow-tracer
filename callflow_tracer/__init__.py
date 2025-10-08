@@ -43,6 +43,7 @@ from .tracer import (
 from .exporter import (
     export_json,
     export_html,
+    export_html_3d,
     export_graph
 )
 from .flamegraph import generate_flamegraph
@@ -108,6 +109,7 @@ __all__ = [
     # Export functions
     'export_json',
     'export_html',
+    'export_html_3d',
     'export_graph',
     
     # Visualization functions
