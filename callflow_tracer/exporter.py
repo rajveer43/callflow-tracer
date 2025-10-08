@@ -1557,11 +1557,13 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
     <title>{title}</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
         * {{
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+{{ ... }}
         }}
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -1823,6 +1825,79 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
             font-size: 12px;
             max-width: 300px;
         }}
+        #codePreview {{
+            position: absolute;
+            background: rgba(10, 10, 10, 0.95);
+            color: #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #4fc3f7;
+            display: none;
+            z-index: 1001;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 600px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+        }}
+        #codePreview::-webkit-scrollbar {{
+            width: 6px;
+        }}
+        #codePreview::-webkit-scrollbar-thumb {{
+            background: #4fc3f7;
+            border-radius: 3px;
+        }}
+        .code-header {{
+            color: #4fc3f7;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }}
+        .code-line {{
+            display: flex;
+            padding: 2px 0;
+        }}
+        .line-number {{
+            color: #666;
+            margin-right: 15px;
+            min-width: 30px;
+            text-align: right;
+            user-select: none;
+        }}
+        .line-content {{
+            color: #e0e0e0;
+            white-space: pre;
+        }}
+        .keyword {{
+            color: #c678dd;
+            font-weight: bold;
+        }}
+        .string {{
+            color: #98c379;
+        }}
+        .comment {{
+            color: #5c6370;
+            font-style: italic;
+        }}
+        .function {{
+            color: #61afef;
+        }}
+        .number {{
+            color: #d19a66;
+        }}
+        .docstring {{
+            color: #98c379;
+            font-style: italic;
+        }}
+        .code-footer {{
+            margin-top: 10px;
+            padding-top: 5px;
+            border-top: 1px solid #333;
+            font-size: 10px;
+            color: #888;
+        }}
         .perf-indicator {{
             display: inline-block;
             width: 8px;
@@ -1908,6 +1983,10 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
             <input type="checkbox" id="showStats" checked>
             <label for="showStats">Show Stats Panel</label>
         </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="enableCodePreview" checked>
+            <label for="enableCodePreview">Code Preview on Hover</label>
+        </div>
         
         <div class="section-header">🎬 Animation</div>
         <div class="control-group">
@@ -1941,10 +2020,13 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
         <button onclick="showCriticalPath()">🛤️ Critical Path</button>
         <button onclick="clusterByModule()">📦 Auto-Cluster</button>
         
-        <div class="section-header">💾 Export</div>
+        <div class="section-header">💾 Export & Share</div>
         <button onclick="takeScreenshot()">📸 Screenshot</button>
         <button onclick="exportData()">💾 Export JSON</button>
         <button onclick="copyToClipboard()">📋 Copy Stats</button>
+        <button onclick="generateShareableURL()">🔗 Generate Share Link</button>
+        <button onclick="saveToLocalStorage()">💾 Save State</button>
+        <button onclick="loadFromLocalStorage()">📂 Load State</button>
         
         <div class="legend">
             <h5 style="margin-bottom: 10px; color: #4fc3f7;">Performance</h5>
@@ -1986,6 +2068,52 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
             <div class="stat-label">Duration</div>
             <div class="stat-value">{graph_data['metadata']['duration']:.3f}s</div>
         </div>
+        <div class="stat-item">
+            <div class="stat-label">FPS</div>
+            <div class="stat-value" id="fpsCounter">60</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Complexity</div>
+            <div class="stat-value" id="complexityScore">-</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Max Depth</div>
+            <div class="stat-value" id="maxDepth">-</div>
+        </div>
+        
+        <button onclick="toggleCharts()" style="width: 100%; margin-top: 15px; padding: 8px; background: #4fc3f7; border: none; border-radius: 5px; color: #000; font-weight: bold; cursor: pointer;">
+            📊 Show Charts
+        </button>
+    </div>
+    
+    <!-- Charts Panel -->
+    <div id="chartsPanel" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); padding: 30px; border-radius: 15px; z-index: 200; display: none; max-width: 900px; max-height: 80vh; overflow-y: auto; border: 2px solid #4fc3f7;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #4fc3f7; margin: 0;">📊 Performance Analytics</h2>
+            <button onclick="toggleCharts()" style="background: #ff5252; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">✕ Close</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">Performance Distribution</h3>
+                <canvas id="perfChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">Call Depth Histogram</h3>
+                <canvas id="depthChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">Top Functions by Time</h3>
+                <canvas id="topFunctionsChart" width="400" height="300"></canvas>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">Call Frequency</h3>
+                <canvas id="callFreqChart" width="400" height="300"></canvas>
+            </div>
+        </div>
     </div>
     
     <div id="info">
@@ -1994,6 +2122,15 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
     </div>
     
     <div id="tooltip"></div>
+    
+    <!-- Code Preview Panel -->
+    <div id="codePreview">
+        <div class="code-header" id="codeHeader">Function Code</div>
+        <div id="codeContent"></div>
+        <div class="code-footer" id="codeFooter">
+            Press 'C' to toggle code preview | Right-click to copy
+        </div>
+    </div>
     
     <!-- Minimap -->
     <canvas id="minimap"></canvas>
@@ -2533,11 +2670,15 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
                     Total Time: ${{node.total_time.toFixed(4)}}s
                 `;
                 
+                // Show code preview
+                showCodePreview(node, event.clientX, event.clientY);
+                
                 // Highlight hovered node
                 mesh.material.emissiveIntensity = 0.8;
                 document.body.style.cursor = 'pointer';
             }} else {{
                 tooltip.style.display = 'none';
+                hideCodePreview();
                 if (hoveredNode && hoveredNode !== selectedNode) {{
                     hoveredNode.material.emissiveIntensity = 0.3;
                 }}
@@ -2851,8 +2992,19 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
                 case 'P':
                     playAnimation();
                     break;
+                case 'c':
+                case 'C':
+                    // Toggle code preview
+                    const checkbox = document.getElementById('enableCodePreview');
+                    checkbox.checked = !checkbox.checked;
+                    codePreviewEnabled = checkbox.checked;
+                    if (!codePreviewEnabled) {{
+                        hideCodePreview();
+                    }}
+                    break;
                 case 'Escape':
                     // Reset all highlighting
+                    hideCodePreview();
                     nodeMeshes.forEach(mesh => {{
                         mesh.material.opacity = 1.0;
                         mesh.material.emissiveIntensity = 0.3;
@@ -2872,6 +3024,8 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
         let timelineData = [];
         let timelineIndex = 0;
         let timelinePlaying = false;
+        let codePreviewEnabled = true;
+        let codePreviewTimeout = null;
         
         function updateNodeOpacity(opacity) {{
             nodeMeshes.forEach(mesh => {{
@@ -3331,8 +3485,691 @@ def _generate_html_3d(graph_data: dict, title: str, profiling_stats: Optional[di
             alert('✅ Filters cleared');
         }}
         
+        // CODE PREVIEW FUNCTIONS
+        function generateMockCode(node) {{
+            // Generate realistic Python code based on node data
+            const funcName = node.label;
+            const module = node.module || 'unknown';
+            
+            // Create a realistic function signature
+            let code = 'def ' + funcName + '(';
+            
+            // Add some parameters based on function name
+            if (funcName.includes('get') || funcName.includes('fetch')) {{
+                code += 'id: int';
+            }} else if (funcName.includes('process') || funcName.includes('handle')) {{
+                code += 'data: dict';
+            }} else if (funcName.includes('save') || funcName.includes('update')) {{
+                code += 'obj: object, **kwargs';
+            }} else {{
+                code += '*args, **kwargs';
+            }}
+            code += '):\\n';
+            
+            // Add docstring
+            code += '    ' + String.fromCharCode(34, 34, 34) + '\\n';
+            code += '    ' + funcName.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim() + '\\n';
+            code += '    \\n';
+            code += '    Module: ' + module + '\\n';
+            code += '    Calls: ' + node.call_count + '\\n';
+            code += '    Avg Time: ' + node.avg_time.toFixed(4) + 's\\n';
+            code += '    Total Time: ' + node.total_time.toFixed(4) + 's\\n';
+            code += '    ' + String.fromCharCode(34, 34, 34) + '\\n';
+            
+            // Add some realistic function body
+            if (funcName.includes('get') || funcName.includes('fetch')) {{
+                code += '    # Fetch data from source\\n';
+                code += '    result = database.query(id)\\n';
+                code += '    if not result:\\n';
+                code += '        return None\\n';
+                code += '    return result\\n';
+            }} else if (funcName.includes('process')) {{
+                code += '    # Process the data\\n';
+                code += '    try:\\n';
+                code += '        validated = validate(data)\\n';
+                code += '        transformed = transform(validated)\\n';
+                code += '        return transformed\\n';
+                code += '    except Exception as e:\\n';
+                code += '        logger.error(f"Error: {{e}}")\\n';
+                code += '        raise\\n';
+            }} else if (funcName.includes('save') || funcName.includes('update')) {{
+                code += '    # Save to database\\n';
+                code += '    obj.updated_at = datetime.now()\\n';
+                code += '    database.save(obj)\\n';
+                code += '    return obj.id\\n';
+            }} else {{
+                code += '    # Function implementation\\n';
+                code += '    result = perform_operation()\\n';
+                code += '    return result\\n';
+            }}
+            
+            return code;
+        }}
+        
+        function syntaxHighlight(code) {{
+            const lines = code.split('\\n');
+            let inDocstring = false;
+            
+            return lines.map((line, i) => {{
+                let highlighted = line;
+                
+                // Check for docstring
+                const tripleQuote = String.fromCharCode(34, 34, 34);
+                const tripleSingle = String.fromCharCode(39, 39, 39);
+                if (line.trim().startsWith(tripleQuote) || line.trim().startsWith(tripleSingle)) {{
+                    inDocstring = !inDocstring;
+                    highlighted = '<span class="docstring">' + escapeHtml(line) + '</span>';
+                }} else if (inDocstring) {{
+                    highlighted = '<span class="docstring">' + escapeHtml(line) + '</span>';
+                }} else {{
+                    // Escape HTML first
+                    highlighted = escapeHtml(line);
+                    
+                    // Highlight comments
+                    highlighted = highlighted.replace(/(#.*$)/g, '<span class="comment">$1</span>');
+                    
+                    // Highlight keywords
+                    highlighted = highlighted.replace(/\\b(def|class|if|else|elif|return|import|from|try|except|finally|with|as|for|while|in|not|and|or|is|None|True|False|raise|pass|break|continue|yield|lambda)\\b/g, '<span class="keyword">$1</span>');
+                    
+                    // Highlight strings (before function names to avoid conflicts)
+                    highlighted = highlighted.replace(/(".*?"|'.*?')/g, '<span class="string">$1</span>');
+                    
+                    // Highlight numbers
+                    highlighted = highlighted.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class="number">$1</span>');
+                    
+                    // Highlight function calls
+                    highlighted = highlighted.replace(/\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(/g, '<span class="function">$1</span>(');
+                }}
+                
+                return '<div class="code-line">' +
+                    '<span class="line-number">' + (i + 1) + '</span>' +
+                    '<span class="line-content">' + highlighted + '</span>' +
+                '</div>';
+            }}).join('');
+        }}
+        
+        function escapeHtml(text) {{
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }}
+        
+        function showCodePreview(node, x, y) {{
+            if (!codePreviewEnabled) return;
+            
+            // Clear any existing timeout
+            if (codePreviewTimeout) {{
+                clearTimeout(codePreviewTimeout);
+            }}
+            
+            // Delay showing to avoid flicker
+            codePreviewTimeout = setTimeout(() => {{
+                const preview = document.getElementById('codePreview');
+                const header = document.getElementById('codeHeader');
+                const content = document.getElementById('codeContent');
+                const footer = document.getElementById('codeFooter');
+                
+                // Set header
+                header.innerHTML = `📄 ${{node.label}} <span style="color: #888; font-size: 10px;">(${{node.module || 'unknown'}})</span>`;
+                
+                // Generate and highlight code
+                const code = generateMockCode(node);
+                content.innerHTML = syntaxHighlight(code);
+                
+                // Update footer with file info
+                footer.innerHTML = `
+                    <div>Module: ${{node.module || 'N/A'}} | Calls: ${{node.call_count}} | Avg: ${{node.avg_time.toFixed(4)}}s</div>
+                    <div style="margin-top: 3px;">Press 'C' to toggle | Right-click to copy code</div>
+                `;
+                
+                // Position near cursor but ensure it stays on screen
+                let left = x + 20;
+                let top = y;
+                
+                // Adjust if too far right
+                if (left + 620 > window.innerWidth) {{
+                    left = x - 620;
+                }}
+                
+                // Adjust if too far down
+                if (top + 420 > window.innerHeight) {{
+                    top = window.innerHeight - 420;
+                }}
+                
+                preview.style.left = Math.max(10, left) + 'px';
+                preview.style.top = Math.max(10, top) + 'px';
+                preview.style.display = 'block';
+            }}, 300); // 300ms delay
+        }}
+        
+        function hideCodePreview() {{
+            if (codePreviewTimeout) {{
+                clearTimeout(codePreviewTimeout);
+                codePreviewTimeout = null;
+            }}
+            document.getElementById('codePreview').style.display = 'none';
+        }}
+        
+        // Listen for code preview toggle
+        document.getElementById('enableCodePreview').addEventListener('change', (e) => {{
+            codePreviewEnabled = e.target.checked;
+            if (!codePreviewEnabled) {{
+                hideCodePreview();
+            }}
+        }});
+        
+        // Add right-click to copy code
+        document.getElementById('codePreview').addEventListener('contextmenu', (e) => {{
+            e.preventDefault();
+            const codeContent = document.getElementById('codeContent').innerText;
+            navigator.clipboard.writeText(codeContent).then(() => {{
+                alert('✅ Code copied to clipboard!');
+            }}).catch(() => {{
+                alert('❌ Failed to copy code');
+            }});
+        }});
+        
+        // ADVANCED STATISTICS
+        let fpsHistory = [];
+        let lastFrameTime = Date.now();
+        let charts = {{}};
+        
+        function updateFPS() {{
+            const now = Date.now();
+            const delta = now - lastFrameTime;
+            const fps = Math.round(1000 / delta);
+            lastFrameTime = now;
+            
+            fpsHistory.push(fps);
+            if (fpsHistory.length > 60) fpsHistory.shift();
+            
+            const avgFps = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
+            document.getElementById('fpsCounter').textContent = avgFps;
+        }}
+        
+        function calculateComplexity() {{
+            // Graph complexity score based on nodes, edges, and depth
+            const nodeCount = nodes.length;
+            const edgeCount = edges.length;
+            const avgDegree = edgeCount / nodeCount;
+            const depth = calculateMaxDepth();
+            
+            // Complexity formula: weighted combination
+            const complexity = Math.round((nodeCount * 0.3) + (edgeCount * 0.4) + (avgDegree * 10) + (depth * 5));
+            
+            document.getElementById('complexityScore').textContent = complexity;
+            document.getElementById('maxDepth').textContent = depth;
+        }}
+        
+        function calculateMaxDepth() {{
+            // BFS to find maximum depth
+            const adjacency = {{}};
+            nodes.forEach(n => adjacency[n.id] = []);
+            edges.forEach(e => {{
+                if (!adjacency[e.source]) adjacency[e.source] = [];
+                adjacency[e.source].push(e.target);
+            }});
+            
+            // Find root nodes (no incoming edges)
+            const hasIncoming = new Set();
+            edges.forEach(e => hasIncoming.add(e.target));
+            const roots = nodes.filter(n => !hasIncoming.has(n.id)).map(n => n.id);
+            
+            if (roots.length === 0) return 0;
+            
+            let maxDepth = 0;
+            roots.forEach(root => {{
+                const queue = [[root, 0]];
+                const visited = new Set();
+                
+                while (queue.length > 0) {{
+                    const [node, depth] = queue.shift();
+                    if (visited.has(node)) continue;
+                    visited.add(node);
+                    maxDepth = Math.max(maxDepth, depth);
+                    
+                    if (adjacency[node]) {{
+                        adjacency[node].forEach(child => {{
+                            if (!visited.has(child)) {{
+                                queue.push([child, depth + 1]);
+                            }}
+                        }});
+                    }}
+                }}
+            }});
+            
+            return maxDepth;
+        }}
+        
+        function toggleCharts() {{
+            const panel = document.getElementById('chartsPanel');
+            const isVisible = panel.style.display !== 'none';
+            
+            if (isVisible) {{
+                panel.style.display = 'none';
+            }} else {{
+                panel.style.display = 'block';
+                createCharts();
+            }}
+        }}
+        
+        function createCharts() {{
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {{
+                if (chart) chart.destroy();
+            }});
+            
+            createPerformanceChart();
+            createDepthChart();
+            createTopFunctionsChart();
+            createCallFrequencyChart();
+        }}
+        
+        function createPerformanceChart() {{
+            const ctx = document.getElementById('perfChart').getContext('2d');
+            
+            // Categorize by performance
+            const fast = nodes.filter(n => n.avg_time < 0.01).length;
+            const medium = nodes.filter(n => n.avg_time >= 0.01 && n.avg_time < 0.1).length;
+            const slow = nodes.filter(n => n.avg_time >= 0.1).length;
+            
+            charts.perf = new Chart(ctx, {{
+                type: 'doughnut',
+                data: {{
+                    labels: ['Fast (<10ms)', 'Medium (10-100ms)', 'Slow (>100ms)'],
+                    datasets: [{{
+                        data: [fast, medium, slow],
+                        backgroundColor: ['#00ff00', '#ffff00', '#ff0000'],
+                        borderColor: '#000',
+                        borderWidth: 2
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    plugins: {{
+                        legend: {{
+                            labels: {{ color: '#fff' }}
+                        }}
+                    }}
+                }}
+            }});
+        }}
+        
+        function createDepthChart() {{
+            const ctx = document.getElementById('depthChart').getContext('2d');
+            
+            // Calculate depth for each node
+            const depths = nodes.map(() => 0);
+            const adjacency = {{}};
+            const nodeIndexMap = {{}};
+            
+            nodes.forEach((n, i) => {{
+                adjacency[n.id] = [];
+                nodeIndexMap[n.id] = i;
+            }});
+            
+            edges.forEach(e => {{
+                if (adjacency[e.source]) {{
+                    adjacency[e.source].push(e.target);
+                }}
+            }});
+            
+            // BFS from roots
+            const hasIncoming = new Set();
+            edges.forEach(e => hasIncoming.add(e.target));
+            const roots = nodes.filter(n => !hasIncoming.has(n.id));
+            
+            roots.forEach(root => {{
+                const queue = [[root.id, 0]];
+                const visited = new Set();
+                
+                while (queue.length > 0) {{
+                    const [nodeId, depth] = queue.shift();
+                    if (visited.has(nodeId)) continue;
+                    visited.add(nodeId);
+                    
+                    const idx = nodeIndexMap[nodeId];
+                    depths[idx] = Math.max(depths[idx], depth);
+                    
+                    if (adjacency[nodeId]) {{
+                        adjacency[nodeId].forEach(child => {{
+                            queue.push([child, depth + 1]);
+                        }});
+                    }}
+                }}
+            }});
+            
+            // Count nodes at each depth
+            const depthCounts = {{}};
+            depths.forEach(d => {{
+                depthCounts[d] = (depthCounts[d] || 0) + 1;
+            }});
+            
+            const labels = Object.keys(depthCounts).sort((a, b) => a - b);
+            const data = labels.map(l => depthCounts[l]);
+            
+            charts.depth = new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: labels.map(l => 'Depth ' + l),
+                    datasets: [{{
+                        label: 'Function Count',
+                        data: data,
+                        backgroundColor: '#4fc3f7',
+                        borderColor: '#29b6f6',
+                        borderWidth: 1
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    scales: {{
+                        y: {{
+                            beginAtZero: true,
+                            ticks: {{ color: '#fff' }}
+                        }},
+                        x: {{
+                            ticks: {{ color: '#fff' }}
+                        }}
+                    }},
+                    plugins: {{
+                        legend: {{
+                            labels: {{ color: '#fff' }}
+                        }}
+                    }}
+                }}
+            }});
+        }}
+        
+        function createTopFunctionsChart() {{
+            const ctx = document.getElementById('topFunctionsChart').getContext('2d');
+            
+            // Get top 10 slowest functions
+            const sorted = [...nodes].sort((a, b) => b.total_time - a.total_time).slice(0, 10);
+            
+            charts.topFuncs = new Chart(ctx, {{
+                type: 'horizontalBar',
+                data: {{
+                    labels: sorted.map(n => n.label.substring(0, 20)),
+                    datasets: [{{
+                        label: 'Total Time (s)',
+                        data: sorted.map(n => n.total_time),
+                        backgroundColor: sorted.map(n => 
+                            n.avg_time > 0.1 ? '#ff0000' : 
+                            n.avg_time > 0.01 ? '#ffff00' : '#00ff00'
+                        ),
+                        borderColor: '#000',
+                        borderWidth: 1
+                    }}]
+                }},
+                options: {{
+                    indexAxis: 'y',
+                    responsive: true,
+                    scales: {{
+                        x: {{
+                            beginAtZero: true,
+                            ticks: {{ color: '#fff' }}
+                        }},
+                        y: {{
+                            ticks: {{ color: '#fff' }}
+                        }}
+                    }},
+                    plugins: {{
+                        legend: {{
+                            labels: {{ color: '#fff' }}
+                        }}
+                    }}
+                }}
+            }});
+        }}
+        
+        function createCallFrequencyChart() {{
+            const ctx = document.getElementById('callFreqChart').getContext('2d');
+            
+            // Group by call count ranges
+            const ranges = {{
+                '1-5': 0,
+                '6-10': 0,
+                '11-20': 0,
+                '21-50': 0,
+                '51+': 0
+            }};
+            
+            nodes.forEach(n => {{
+                const count = n.call_count;
+                if (count <= 5) ranges['1-5']++;
+                else if (count <= 10) ranges['6-10']++;
+                else if (count <= 20) ranges['11-20']++;
+                else if (count <= 50) ranges['21-50']++;
+                else ranges['51+']++;
+            }});
+            
+            charts.callFreq = new Chart(ctx, {{
+                type: 'pie',
+                data: {{
+                    labels: Object.keys(ranges),
+                    datasets: [{{
+                        data: Object.values(ranges),
+                        backgroundColor: [
+                            '#00ff00',
+                            '#7fff00',
+                            '#ffff00',
+                            '#ff7f00',
+                            '#ff0000'
+                        ],
+                        borderColor: '#000',
+                        borderWidth: 2
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    plugins: {{
+                        legend: {{
+                            labels: {{ color: '#fff' }}
+                        }}
+                    }}
+                }}
+            }});
+        }}
+        
         // Initialize
         init();
+        
+        // Calculate initial metrics
+        calculateComplexity();
+        
+        // Update FPS in animation loop
+        setInterval(updateFPS, 100);
+        
+        // SHAREABLE URL & STATE MANAGEMENT
+        function generateShareableURL() {{
+            const state = {{
+                layout: document.getElementById('layout').value,
+                nodeSize: document.getElementById('nodeSize').value,
+                spread: document.getElementById('spread').value,
+                showLabels: document.getElementById('showLabels').checked,
+                showEdges: document.getElementById('showEdges').checked,
+                pulseNodes: document.getElementById('pulseNodes').checked,
+                bgColor: document.getElementById('bgColor').value,
+                cameraPosition: {{
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z
+                }},
+                cameraTarget: {{
+                    x: controls.target.x,
+                    y: controls.target.y,
+                    z: controls.target.z
+                }}
+            }};
+            
+            // Encode state to base64
+            const stateStr = JSON.stringify(state);
+            const encoded = btoa(stateStr);
+            
+            // Create shareable URL
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = baseUrl + '?state=' + encoded;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {{
+                alert('🔗 Shareable URL copied to clipboard!\\n\\nShare this link to show your exact view configuration.\\n\\nURL length: ' + shareUrl.length + ' characters');
+            }}).catch(() => {{
+                // Fallback: show in prompt
+                prompt('🔗 Shareable URL (copy this):', shareUrl);
+            }});
+        }}
+        
+        function loadStateFromURL() {{
+            const urlParams = new URLSearchParams(window.location.search);
+            const stateParam = urlParams.get('state');
+            
+            if (stateParam) {{
+                try {{
+                    const stateStr = atob(stateParam);
+                    const state = JSON.parse(stateStr);
+                    
+                    // Apply state
+                    document.getElementById('layout').value = state.layout || 'force';
+                    document.getElementById('nodeSize').value = state.nodeSize || 15;
+                    document.getElementById('spread').value = state.spread || 500;
+                    document.getElementById('showLabels').checked = state.showLabels !== false;
+                    document.getElementById('showEdges').checked = state.showEdges !== false;
+                    document.getElementById('pulseNodes').checked = state.pulseNodes !== false;
+                    document.getElementById('bgColor').value = state.bgColor || '0x0a0a0a';
+                    
+                    // Update displays
+                    document.getElementById('nodeSizeValue').textContent = state.nodeSize || 15;
+                    document.getElementById('spreadValue').textContent = state.spread || 500;
+                    
+                    // Apply layout
+                    createGraph(state.layout || 'force');
+                    
+                    // Restore camera position
+                    if (state.cameraPosition) {{
+                        camera.position.set(
+                            state.cameraPosition.x,
+                            state.cameraPosition.y,
+                            state.cameraPosition.z
+                        );
+                    }}
+                    
+                    if (state.cameraTarget) {{
+                        controls.target.set(
+                            state.cameraTarget.x,
+                            state.cameraTarget.y,
+                            state.cameraTarget.z
+                        );
+                    }}
+                    
+                    // Apply background color
+                    scene.background = new THREE.Color(parseInt(state.bgColor));
+                    
+                    console.log('✅ State loaded from URL');
+                }} catch (e) {{
+                    console.error('Failed to load state from URL:', e);
+                }}
+            }}
+        }}
+        
+        function saveToLocalStorage() {{
+            const state = {{
+                layout: document.getElementById('layout').value,
+                nodeSize: document.getElementById('nodeSize').value,
+                spread: document.getElementById('spread').value,
+                rotationSpeed: document.getElementById('rotationSpeed').value,
+                showLabels: document.getElementById('showLabels').checked,
+                showEdges: document.getElementById('showEdges').checked,
+                pulseNodes: document.getElementById('pulseNodes').checked,
+                particleEffect: document.getElementById('particleEffect').checked,
+                showGrid: document.getElementById('showGrid').checked,
+                bgColor: document.getElementById('bgColor').value,
+                nodeOpacity: document.getElementById('nodeOpacity').value,
+                edgeThickness: document.getElementById('edgeThickness').value,
+                cameraPosition: {{
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z
+                }},
+                cameraTarget: {{
+                    x: controls.target.x,
+                    y: controls.target.y,
+                    z: controls.target.z
+                }},
+                timestamp: new Date().toISOString()
+            }};
+            
+            localStorage.setItem('callflow3d_state', JSON.stringify(state));
+            alert('💾 State saved to browser storage!\\n\\nYou can reload this page and click "Load State" to restore this view.');
+        }}
+        
+        function loadFromLocalStorage() {{
+            const stateStr = localStorage.getItem('callflow3d_state');
+            
+            if (!stateStr) {{
+                alert('❌ No saved state found');
+                return;
+            }}
+            
+            try {{
+                const state = JSON.parse(stateStr);
+                
+                // Apply all settings
+                document.getElementById('layout').value = state.layout;
+                document.getElementById('nodeSize').value = state.nodeSize;
+                document.getElementById('spread').value = state.spread;
+                document.getElementById('rotationSpeed').value = state.rotationSpeed || 0;
+                document.getElementById('showLabels').checked = state.showLabels;
+                document.getElementById('showEdges').checked = state.showEdges;
+                document.getElementById('pulseNodes').checked = state.pulseNodes;
+                document.getElementById('particleEffect').checked = state.particleEffect;
+                document.getElementById('showGrid').checked = state.showGrid;
+                document.getElementById('bgColor').value = state.bgColor;
+                document.getElementById('nodeOpacity').value = state.nodeOpacity;
+                document.getElementById('edgeThickness').value = state.edgeThickness;
+                
+                // Update value displays
+                document.getElementById('nodeSizeValue').textContent = state.nodeSize;
+                document.getElementById('spreadValue').textContent = state.spread;
+                document.getElementById('rotationSpeedValue').textContent = state.rotationSpeed || 0;
+                document.getElementById('nodeOpacityValue').textContent = state.nodeOpacity;
+                document.getElementById('edgeThicknessValue').textContent = state.edgeThickness;
+                
+                // Apply layout
+                createGraph(state.layout);
+                
+                // Restore camera
+                camera.position.set(
+                    state.cameraPosition.x,
+                    state.cameraPosition.y,
+                    state.cameraPosition.z
+                );
+                controls.target.set(
+                    state.cameraTarget.x,
+                    state.cameraTarget.y,
+                    state.cameraTarget.z
+                );
+                
+                // Apply other settings
+                scene.background = new THREE.Color(parseInt(state.bgColor));
+                updateNodeOpacity(state.nodeOpacity / 100);
+                updateEdgeThickness(state.edgeThickness);
+                toggleLabels(state.showLabels);
+                toggleEdges(state.showEdges);
+                toggleGrid(state.showGrid);
+                
+                if (state.particleEffect) {{
+                    createParticles();
+                }}
+                
+                const savedDate = new Date(state.timestamp).toLocaleString();
+                alert('✅ State loaded successfully!\\n\\nSaved on: ' + savedDate);
+            }} catch (e) {{
+                alert('❌ Failed to load state: ' + e.message);
+            }}
+        }}
+        
+        // Load state from URL on init
+        setTimeout(() => loadStateFromURL(), 100);
     </script>
 </body>
 </html>'''
