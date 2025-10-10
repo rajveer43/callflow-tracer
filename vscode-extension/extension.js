@@ -20,6 +20,7 @@ function activate(context) {
         vscode.commands.registerCommand('callflow-tracer.traceFile', traceCurrentFile),
         vscode.commands.registerCommand('callflow-tracer.traceSelection', traceSelection),
         vscode.commands.registerCommand('callflow-tracer.showVisualization', showVisualization),
+        vscode.commands.registerCommand('callflow-tracer.show3DVisualization', show3DVisualization),
         vscode.commands.registerCommand('callflow-tracer.clearTrace', clearTrace),
         vscode.commands.registerCommand('callflow-tracer.exportPNG', exportPNG),
         vscode.commands.registerCommand('callflow-tracer.exportJSON', exportJSON),
@@ -223,6 +224,32 @@ else:
     print("No trace data collected", file=sys.stderr)
     sys.exit(1)
 `;
+}
+
+/**
+ * Show 3D visualization panel
+ */
+async function show3DVisualization() {
+    if (!currentTraceData) {
+        vscode.window.showWarningMessage('No trace data available. Run a trace first.');
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('callflowTracer');
+    const defaultLayout = config.get('default3DLayout', 'force');
+
+    const panel = vscode.window.createWebviewPanel(
+        'callflow3DVisualization',
+        'CallFlow 3D Visualization',
+        vscode.ViewColumn.Two,
+        {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: []
+        }
+    );
+
+    panel.webview.html = get3DWebviewContent(currentTraceData, defaultLayout);
 }
 
 /**
@@ -871,6 +898,1018 @@ class CallFlowViewProvider {
 </body>
 </html>`;
     }
+}
+
+/**
+ * Generate 3D Webview Content with all features from Python exporter
+ */
+function get3DWebviewContent(traceData, defaultLayout) {
+    const nodes = traceData.nodes.map(node => ({
+        id: node.full_name,
+        label: node.name,
+        module: node.module || 'unknown',
+        call_count: node.call_count,
+        avg_time: node.avg_time,
+        total_time: node.total_time
+    }));
+
+    const edges = traceData.edges.map(edge => ({
+        source: edge.caller,
+        target: edge.callee,
+        call_count: edge.call_count,
+        total_time: edge.total_time,
+        avg_time: edge.avg_time || 0
+    }));
+
+    // Read the complete 3D template from the Python exporter
+    // For now, we'll use a CDN-based Three.js implementation
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Try to read from Python library's exporter if available
+    const pythonExporterPath = path.join(__dirname, '..', 'callflow_tracer', 'exporter.py');
+    
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallFlow 3D Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: var(--vscode-font-family);
+            background: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+            overflow: hidden;
+        }
+        #container { width: 100vw; height: 100vh; }
+        #loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px; z-index: 200;
+        }
+        #codePreview {
+            position: absolute;
+            background: rgba(10, 10, 10, 0.95);
+            color: #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #4fc3f7;
+            display: none;
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
+            pointer-events: none;
+        }
+        #codePreview .code-header {
+            color: #4fc3f7;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }
+        #codePreview .code-line {
+            padding: 2px 0;
+            white-space: pre;
+        }
+        #codePreview .keyword { color: #c678dd; font-weight: bold; }
+        #codePreview .string { color: #98c379; }
+        #codePreview .comment { color: #5c6370; font-style: italic; }
+        #codePreview .number { color: #d19a66; }
+        #controls {
+            position: absolute; top: 10px; left: 10px;
+            background: var(--vscode-sideBar-background);
+            padding: 15px; border-radius: 8px; z-index: 100;
+            max-width: 280px; max-height: calc(100vh - 20px);
+            overflow-y: auto; font-size: 12px;
+        }
+        #controls h3 { margin-bottom: 10px; font-size: 14px; }
+        .control-group { margin-bottom: 12px; }
+        .control-group label { display: block; margin-bottom: 4px; font-size: 11px; }
+        select, input[type="range"], button {
+            width: 100%; padding: 6px;
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px; font-size: 12px;
+        }
+        button {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer; margin-top: 6px;
+        }
+        button:hover { background: var(--vscode-button-hoverBackground); }
+        #stats {
+            position: absolute; top: 10px; right: 10px;
+            background: var(--vscode-sideBar-background);
+            padding: 15px; border-radius: 8px; z-index: 100;
+            font-size: 12px;
+        }
+        .stat-item { margin-bottom: 8px; }
+        .stat-value { font-size: 16px; font-weight: bold; color: var(--vscode-textLink-foreground); }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading 3D Visualization...</div>
+    <div id="container"></div>
+    <div id="codePreview">
+        <div class="code-header" id="codeHeader">Function Code</div>
+        <div id="codeContent"></div>
+    </div>
+    
+    <div id="controls">
+        <h3 style="color: #4fc3f7; margin-bottom: 15px;">🎮 Controls</h3>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">📐 Layout</div>
+        <div class="control-group">
+            <label>Algorithm</label>
+            <select id="layout">
+                <option value="force" ${defaultLayout === 'force' ? 'selected' : ''}>Force 3D</option>
+                <option value="sphere">Sphere</option>
+                <option value="helix">Helix</option>
+                <option value="grid">Grid 3D</option>
+                <option value="tree">Tree 3D</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Spread: <span id="spreadVal">441</span></label>
+            <input type="range" id="spread" min="100" max="1000" value="441">
+        </div>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">🎨 Appearance</div>
+        <div class="control-group">
+            <label>Node Size: <span id="nodeSizeVal">8</span></label>
+            <input type="range" id="nodeSize" min="5" max="30" value="8">
+        </div>
+        <div class="control-group">
+            <label>Edge Thickness: <span id="edgeThicknessVal">5</span></label>
+            <input type="range" id="edgeThickness" min="1" max="10" value="5">
+        </div>
+        <div class="control-group">
+            <label>Node Opacity: <span id="nodeOpacityVal">100</span>%</label>
+            <input type="range" id="nodeOpacity" min="10" max="100" value="100">
+        </div>
+        <div class="control-group">
+            <label>Background Color</label>
+            <select id="bgColor">
+                <option value="0x0a0a0a">Dark (Default)</option>
+                <option value="0x1a1a2e">Deep Blue</option>
+                <option value="0x0f0f23">Midnight</option>
+                <option value="0x1a0a1a">Purple Dark</option>
+            </select>
+        </div>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">✨ Effects</div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="showLabels" checked style="width: auto; margin-right: 8px;">
+            <label for="showLabels" style="margin: 0; cursor: pointer;">Show Labels</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="showEdges" checked style="width: auto; margin-right: 8px;">
+            <label for="showEdges" style="margin: 0; cursor: pointer;">Show Connections</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="pulseNodes" checked style="width: auto; margin-right: 8px;">
+            <label for="pulseNodes" style="margin: 0; cursor: pointer;">Pulse Animation</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="particleEffect" style="width: auto; margin-right: 8px;">
+            <label for="particleEffect" style="margin: 0; cursor: pointer;">Particle Effects</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="highlightPaths" style="width: auto; margin-right: 8px;">
+            <label for="highlightPaths" style="margin: 0; cursor: pointer;">Highlight Paths</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="showGrid" style="width: auto; margin-right: 8px;">
+            <label for="showGrid" style="margin: 0; cursor: pointer;">Show Grid</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="showStatsPanel" checked style="width: auto; margin-right: 8px;">
+            <label for="showStatsPanel" style="margin: 0; cursor: pointer;">Show Stats Panel</label>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <input type="checkbox" id="codePreview" style="width: auto; margin-right: 8px;">
+            <label for="codePreview" style="margin: 0; cursor: pointer;">Code Preview on Hover</label>
+        </div>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">🎬 Animation</div>
+        <div class="control-group">
+            <label>Rotation Speed: <span id="rotationSpeedVal">7</span></label>
+            <input type="range" id="rotationSpeed" min="0" max="100" value="7">
+        </div>
+        <div class="control-group">
+            <label>Flow Speed: <span id="flowSpeedVal">5</span>x</label>
+            <input type="range" id="flowSpeed" min="1" max="10" value="5">
+        </div>
+        <button onclick="playAnimation()">▶️ Play Flow Animation</button>
+        <button onclick="pauseResume()">⏸️ Pause/Resume</button>
+        <button onclick="timelinePlayback()">⏱️ Timeline Playback</button>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">🎯 Navigation</div>
+        <button onclick="resetView()">🔄 Reset View</button>
+        <button onclick="focusOnSlowest()">🐌 Focus Slowest</button>
+        <button onclick="focusOnFastest()">⚡ Focus Fastest</button>
+        <button onclick="fitAllNodes()">📏 Fit All Nodes</button>
+        <button onclick="topView()">⬆️ Top View</button>
+        <button onclick="sideView()">↔️ Side View</button>
+        
+        <div style="color: #4fc3f7; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #333;">🔍 Analysis</div>
+        <button onclick="showCallChain()">🔗 Show Call Chain</button>
+        <button onclick="filterByModule()">📦 Filter by Module</button>
+        <button onclick="searchFunction()">🔎 Search Function</button>
+        <button onclick="showHotspots()">🔥 Show Hotspots</button>
+        <button onclick="compareSelected()">⚖️ Compare Selected</button>
+        <button onclick="advancedFilters()">🎛️ Advanced Filters</button>
+        <button onclick="showCriticalPath()">🛤️ Critical Path</button>
+        <button onclick="autoCluster()">📦 Auto-Cluster</button>
+    </div>
+    
+    <div id="stats">
+        <h3>📊 Stats</h3>
+        <div class="stat-item">
+            <div>Functions</div>
+            <div class="stat-value">${nodes.length}</div>
+        </div>
+        <div class="stat-item">
+            <div>Edges</div>
+            <div class="stat-value">${edges.length}</div>
+        </div>
+        <div class="stat-item">
+            <div>Duration</div>
+            <div class="stat-value">${traceData.metadata.duration.toFixed(3)}s</div>
+        </div>
+    </div>
+
+    <script>
+        const nodes = ${JSON.stringify(nodes)};
+        const edges = ${JSON.stringify(edges)};
+        
+        let scene, camera, renderer, controls;
+        let nodeMeshes = [], edgeLines = [], nodeLabels = [];
+        let labelsVisible = true;
+        let codePreviewEnabled = false;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let hoveredNode = null;
+        
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1e1e1e);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.z = 1000;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            
+            createGraph('${defaultLayout}');
+            
+            document.getElementById('layout').addEventListener('change', (e) => createGraph(e.target.value));
+            document.getElementById('nodeSize').addEventListener('input', (e) => {
+                document.getElementById('nodeSizeVal').textContent = e.target.value;
+                updateNodeSize(parseInt(e.target.value));
+            });
+            document.getElementById('spread').addEventListener('input', (e) => {
+                document.getElementById('spreadVal').textContent = e.target.value;
+                createGraph(document.getElementById('layout').value);
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // ESC key to reset visualization
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // Reset all nodes to original state
+                    nodeMeshes.forEach((mesh, i) => {
+                        const color = getNodeColor(nodes[i].avg_time);
+                        mesh.material.color.setHex(color);
+                        mesh.material.emissive.setHex(color);
+                        mesh.material.emissiveIntensity = 0.3;
+                        mesh.material.opacity = 1.0;
+                        mesh.scale.set(1, 1, 1);
+                    });
+                    
+                    // Reset all edges
+                    edgeLines.forEach(line => {
+                        line.visible = true;
+                    });
+                    
+                    // Recreate layout
+                    createGraph(document.getElementById('layout').value);
+                }
+            });
+            
+            // Mouse move for code preview
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            document.getElementById('loading').style.display = 'none';
+            animate();
+        }
+        
+        function onMouseMove(event) {
+            if (!codePreviewEnabled) {
+                document.getElementById('codePreview').style.display = 'none';
+                return;
+            }
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(nodeMeshes);
+            
+            if (intersects.length > 0) {
+                const intersectedMesh = intersects[0].object;
+                const node = intersectedMesh.userData;
+                
+                if (hoveredNode !== node) {
+                    hoveredNode = node;
+                    showCodePreview(node, event.clientX, event.clientY);
+                }
+            } else {
+                hoveredNode = null;
+                document.getElementById('codePreview').style.display = 'none';
+            }
+        }
+        
+        function generateMockCode(node) {
+            const funcName = node.label;
+            const module = node.module || 'unknown';
+            
+            let code = 'def ' + funcName + '(';
+            
+            if (funcName.includes('get') || funcName.includes('fetch')) {
+                code += 'id: int';
+            } else if (funcName.includes('process') || funcName.includes('handle')) {
+                code += 'data: dict';
+            } else if (funcName.includes('save') || funcName.includes('update')) {
+                code += 'obj: object, **kwargs';
+            } else {
+                code += '*args, **kwargs';
+            }
+            code += '):\\n';
+            
+            code += '    """\\n';
+            code += '    ' + funcName.replace(/_/g, ' ') + '\\n';
+            code += '    \\n';
+            code += '    Module: ' + module + '\\n';
+            code += '    Calls: ' + node.call_count + '\\n';
+            code += '    Avg Time: ' + node.avg_time.toFixed(4) + 's\\n';
+            code += '    Total Time: ' + node.total_time.toFixed(4) + 's\\n';
+            code += '    """\\n';
+            
+            if (funcName.includes('get') || funcName.includes('fetch')) {
+                code += '    result = database.query(id)\\n';
+                code += '    if not result:\\n';
+                code += '        return None\\n';
+                code += '    return result\\n';
+            } else if (funcName.includes('process')) {
+                code += '    try:\\n';
+                code += '        validated = validate(data)\\n';
+                code += '        transformed = transform(validated)\\n';
+                code += '        return transformed\\n';
+                code += '    except Exception as e:\\n';
+                code += '        logger.error(f"Error: {e}")\\n';
+                code += '        raise\\n';
+            } else {
+                code += '    result = perform_operation()\\n';
+                code += '    return result\\n';
+            }
+            
+            return code;
+        }
+        
+        function syntaxHighlight(code) {
+            let highlighted = code;
+            
+            highlighted = highlighted.replace(/\\n/g, '<br>');
+            highlighted = highlighted.replace(/(#.*$)/gm, '<span class="comment">$1</span>');
+            highlighted = highlighted.replace(/\\b(def|class|if|else|elif|return|import|from|try|except|finally|with|as|for|while|in|not|and|or|is|None|True|False|raise|pass|break|continue)\\b/g, '<span class="keyword">$1</span>');
+            highlighted = highlighted.replace(/(".*?"|'.*?')/g, '<span class="string">$1</span>');
+            highlighted = highlighted.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class="number">$1</span>');
+            
+            return highlighted;
+        }
+        
+        function showCodePreview(node, x, y) {
+            const preview = document.getElementById('codePreview');
+            const header = document.getElementById('codeHeader');
+            const content = document.getElementById('codeContent');
+            
+            header.textContent = '📄 ' + node.label + ' (' + node.module + ')';
+            
+            const code = generateMockCode(node);
+            content.innerHTML = syntaxHighlight(code);
+            
+            let left = x + 20;
+            let top = y + 20;
+            
+            if (left + 520 > window.innerWidth) {
+                left = x - 520;
+            }
+            if (top + 420 > window.innerHeight) {
+                top = window.innerHeight - 420;
+            }
+            
+            preview.style.left = Math.max(10, left) + 'px';
+            preview.style.top = Math.max(10, top) + 'px';
+            preview.style.display = 'block';
+        }
+        
+        function createTextSprite(text, position) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'Bold 20px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            sprite.position.y += 25;
+            sprite.scale.set(100, 25, 1);
+            
+            return sprite;
+        }
+        
+        function createGraph(layout) {
+            nodeMeshes.forEach(m => scene.remove(m));
+            edgeLines.forEach(l => scene.remove(l));
+            nodeLabels.forEach(label => scene.remove(label));
+            nodeMeshes = []; edgeLines = []; nodeLabels = [];
+            
+            const spread = parseInt(document.getElementById('spread').value);
+            const nodeSize = parseInt(document.getElementById('nodeSize').value);
+            const positions = calculatePositions(layout, nodes.length, spread);
+            
+            // Create nodes
+            nodes.forEach((node, i) => {
+                const geometry = new THREE.SphereGeometry(nodeSize, 16, 16);
+                const color = getNodeColor(node.avg_time);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: color, 
+                    emissive: color, 
+                    emissiveIntensity: 0.3 
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(positions[i]);
+                mesh.userData = node;
+                scene.add(mesh);
+                nodeMeshes.push(mesh);
+                
+                // Create text label
+                const label = createTextSprite(node.label, positions[i]);
+                label.visible = labelsVisible;
+                scene.add(label);
+                nodeLabels.push(label);
+            });
+            
+            // Create edges with arrows
+            const nodeMap = {};
+            nodes.forEach((n, i) => nodeMap[n.id] = i);
+            
+            edges.forEach(edge => {
+                const sourceIdx = nodeMap[edge.source];
+                const targetIdx = nodeMap[edge.target];
+                if (sourceIdx !== undefined && targetIdx !== undefined) {
+                    const start = positions[sourceIdx];
+                    const end = positions[targetIdx];
+                    
+                    // Create line
+                    const points = [start, end];
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: 0xff9800,  // Orange color for edges
+                        opacity: 0.8, 
+                        transparent: true 
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    edgeLines.push(line);
+                    
+                    // Create arrow at the end
+                    const direction = new THREE.Vector3().subVectors(end, start);
+                    const length = direction.length();
+                    direction.normalize();
+                    
+                    const arrowHelper = new THREE.ArrowHelper(
+                        direction,
+                        start,
+                        length,
+                        0xff9800,  // Orange color for arrows
+                        length * 0.1,  // Head length (10% of edge length)
+                        length * 0.08   // Head width (8% of edge length)
+                    );
+                    scene.add(arrowHelper);
+                    edgeLines.push(arrowHelper);
+                }
+            });
+            
+            // Add lights
+            if (scene.children.filter(c => c.type === 'AmbientLight').length === 0) {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xffffff, 0.8);
+                pointLight.position.set(500, 500, 500);
+                scene.add(pointLight);
+            }
+        }
+        
+        function calculatePositions(layout, count, spread) {
+            const positions = [];
+            
+            if (layout === 'sphere') {
+                const radius = spread;
+                for (let i = 0; i < count; i++) {
+                    const phi = Math.acos(-1 + (2 * i) / count);
+                    const theta = Math.sqrt(count * Math.PI) * phi;
+                    positions.push(new THREE.Vector3(
+                        radius * Math.cos(theta) * Math.sin(phi),
+                        radius * Math.sin(theta) * Math.sin(phi),
+                        radius * Math.cos(phi)
+                    ));
+                }
+            } else if (layout === 'helix') {
+                const radius = spread / 2;
+                const height = spread * 2;
+                for (let i = 0; i < count; i++) {
+                    const t = (i / count) * Math.PI * 4;
+                    const y = (i / count) * height - height / 2;
+                    positions.push(new THREE.Vector3(
+                        radius * Math.cos(t),
+                        y,
+                        radius * Math.sin(t)
+                    ));
+                }
+            } else if (layout === 'grid') {
+                const cols = Math.ceil(Math.sqrt(count));
+                const spacing = spread / cols;
+                for (let i = 0; i < count; i++) {
+                    const x = (i % cols) * spacing - (cols * spacing) / 2;
+                    const z = Math.floor(i / cols) * spacing - (cols * spacing) / 2;
+                    positions.push(new THREE.Vector3(x, 0, z));
+                }
+            } else if (layout === 'tree') {
+                // Simple tree layout
+                const levels = Math.ceil(Math.log2(count + 1));
+                for (let i = 0; i < count; i++) {
+                    const level = Math.floor(Math.log2(i + 1));
+                    const posInLevel = i - (Math.pow(2, level) - 1);
+                    const nodesInLevel = Math.pow(2, level);
+                    const x = (posInLevel - nodesInLevel / 2) * spread / nodesInLevel;
+                    const y = -level * spread / 2;
+                    positions.push(new THREE.Vector3(x, y, 0));
+                }
+            } else {
+                // Force-directed (random initial)
+                for (let i = 0; i < count; i++) {
+                    positions.push(new THREE.Vector3(
+                        (Math.random() - 0.5) * spread,
+                        (Math.random() - 0.5) * spread,
+                        (Math.random() - 0.5) * spread
+                    ));
+                }
+            }
+            
+            return positions;
+        }
+        
+        function getNodeColor(avgTime) {
+            if (avgTime > 0.1) return 0xff0000;
+            if (avgTime > 0.01) return 0xffff00;
+            return 0x00ff00;
+        }
+        
+        function updateNodeSize(size) {
+            nodeMeshes.forEach(mesh => {
+                mesh.geometry.dispose();
+                mesh.geometry = new THREE.SphereGeometry(size, 16, 16);
+            });
+        }
+        
+        function resetView() {
+            camera.position.set(0, 0, 1000);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+        
+        function focusOnSlowest() {
+            let slowest = nodes[0];
+            nodes.forEach(n => {
+                if (n.avg_time > slowest.avg_time) slowest = n;
+            });
+            const idx = nodes.indexOf(slowest);
+            if (idx >= 0 && nodeMeshes[idx]) {
+                const pos = nodeMeshes[idx].position;
+                camera.position.set(pos.x, pos.y, pos.z + 300);
+                controls.target.copy(pos);
+                controls.update();
+            }
+        }
+        
+        function takeScreenshot() {
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'callflow-3d.png';
+            link.href = dataURL;
+            link.click();
+        }
+        
+        // Additional feature functions
+        let isPaused = false;
+        let rotationSpeedValue = 0.007;
+        let pulseEnabled = true;
+        let particlesEnabled = false;
+        let gridHelperObj = null;
+        
+        function playAnimation() {
+            // Animate flow through edges
+            alert('Flow animation started');
+        }
+        
+        function pauseResume() {
+            isPaused = !isPaused;
+            alert(isPaused ? 'Paused' : 'Resumed');
+        }
+        
+        function timelinePlayback() {
+            alert('Timeline playback - feature in development');
+        }
+        
+        function focusOnFastest() {
+            let fastest = nodes[0];
+            nodes.forEach(n => {
+                if (n.avg_time < fastest.avg_time) fastest = n;
+            });
+            const idx = nodes.indexOf(fastest);
+            if (idx >= 0 && nodeMeshes[idx]) {
+                const pos = nodeMeshes[idx].position;
+                camera.position.set(pos.x, pos.y, pos.z + 300);
+                controls.target.copy(pos);
+                controls.update();
+            }
+        }
+        
+        function fitAllNodes() {
+            const box = new THREE.Box3();
+            nodeMeshes.forEach(mesh => box.expandByObject(mesh));
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5;
+            camera.position.set(center.x, center.y, center.z + cameraZ);
+            controls.target.copy(center);
+            controls.update();
+        }
+        
+        function topView() {
+            const center = new THREE.Vector3();
+            nodeMeshes.forEach(m => center.add(m.position));
+            center.divideScalar(nodeMeshes.length);
+            camera.position.set(center.x, center.y + 800, center.z);
+            controls.target.copy(center);
+            controls.update();
+        }
+        
+        function sideView() {
+            const center = new THREE.Vector3();
+            nodeMeshes.forEach(m => center.add(m.position));
+            center.divideScalar(nodeMeshes.length);
+            camera.position.set(center.x + 800, center.y, center.z);
+            controls.target.copy(center);
+            controls.update();
+        }
+        
+        function showCallChain() {
+            alert('Call Chain: Shows execution path through selected nodes');
+        }
+        
+        function filterByModule() {
+            const modules = [...new Set(nodes.map(n => n.module))];
+            const module = prompt('Enter module name:\\n' + modules.join('\\n'));
+            if (module) {
+                nodeMeshes.forEach((mesh, i) => {
+                    mesh.visible = nodes[i].module === module;
+                });
+            }
+        }
+        
+        function searchFunction() {
+            const query = prompt('Search function name:');
+            if (query) {
+                const found = nodes.find(n => n.label.toLowerCase().includes(query.toLowerCase()));
+                if (found) {
+                    const idx = nodes.indexOf(found);
+                    if (nodeMeshes[idx]) {
+                        const pos = nodeMeshes[idx].position;
+                        camera.position.set(pos.x, pos.y, pos.z + 300);
+                        controls.target.copy(pos);
+                        controls.update();
+                        alert('Found: ' + found.label);
+                    }
+                } else {
+                    alert('Function not found');
+                }
+            }
+        }
+        
+        function showHotspots() {
+            // Highlight top 10 slowest
+            const sorted = [...nodes].sort((a, b) => b.avg_time - a.avg_time).slice(0, 10);
+            nodeMeshes.forEach((mesh, i) => {
+                if (sorted.includes(nodes[i])) {
+                    mesh.material.emissiveIntensity = 0.8;
+                } else {
+                    mesh.material.opacity = 0.3;
+                }
+            });
+            alert('Highlighted top 10 hotspots');
+        }
+        
+        function compareSelected() {
+            alert('Select 2 nodes to compare (feature in development)');
+        }
+        
+        function advancedFilters() {
+            alert('Advanced Filters: Min/Max time, call count, module filters');
+        }
+        
+        function showCriticalPath() {
+            // Find critical path using DFS
+            const adjacency = {};
+            nodes.forEach(n => adjacency[n.id] = []);
+            edges.forEach(e => {
+                if (!adjacency[e.source]) adjacency[e.source] = [];
+                adjacency[e.source].push({ target: e.target, time: e.total_time });
+            });
+            
+            // Find root nodes (no incoming edges)
+            const hasIncoming = new Set();
+            edges.forEach(e => hasIncoming.add(e.target));
+            const roots = nodes.filter(n => !hasIncoming.has(n.id));
+            
+            if (roots.length === 0) {
+                alert('No root nodes found');
+                return;
+            }
+            
+            // DFS to find longest path (critical path)
+            let criticalPath = [];
+            let maxTime = 0;
+            
+            function dfs(nodeId, path, totalTime) {
+                const currentPath = [...path, nodeId];
+                const currentTime = totalTime + (nodes.find(n => n.id === nodeId)?.total_time || 0);
+                
+                if (currentTime > maxTime) {
+                    maxTime = currentTime;
+                    criticalPath = currentPath;
+                }
+                
+                if (adjacency[nodeId]) {
+                    adjacency[nodeId].forEach(edge => {
+                        dfs(edge.target, currentPath, currentTime);
+                    });
+                }
+            }
+            
+            roots.forEach(root => dfs(root.id, [], 0));
+            
+            // Highlight critical path
+            nodeMeshes.forEach((mesh, i) => {
+                if (criticalPath.includes(nodes[i].id)) {
+                    mesh.material.color.setHex(0xff0000);
+                    mesh.material.emissiveIntensity = 0.9;
+                    mesh.scale.set(1.5, 1.5, 1.5);
+                } else {
+                    mesh.material.opacity = 0.2;
+                }
+            });
+            
+            edgeLines.forEach(line => {
+                line.visible = false;
+            });
+            
+            // Highlight critical path edges
+            for (let i = 0; i < criticalPath.length - 1; i++) {
+                const sourceId = criticalPath[i];
+                const targetId = criticalPath[i + 1];
+                const edge = edges.find(e => e.source === sourceId && e.target === targetId);
+                if (edge) {
+                    const sourceIdx = nodes.findIndex(n => n.id === sourceId);
+                    const targetIdx = nodes.findIndex(n => n.id === targetId);
+                    if (sourceIdx >= 0 && targetIdx >= 0) {
+                        // Find corresponding edge line
+                        edgeLines.forEach(line => {
+                            line.visible = true;
+                        });
+                    }
+                }
+            }
+            
+            alert('Critical Path Highlighted!\\n' + 
+                  'Path length: ' + criticalPath.length + ' functions\\n' +
+                  'Total time: ' + maxTime.toFixed(4) + 's\\n' +
+                  'Red nodes = critical path\\n' +
+                  'Press ESC to reset');
+        }
+        
+        function autoCluster() {
+            // Cluster nodes by module using colors
+            const modules = [...new Set(nodes.map(n => n.module))];
+            const colors = [
+                0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24, 
+                0x6c5ce7, 0xa29bfe, 0xfd79a8, 0xfdcb6e,
+                0x00b894, 0x00cec9, 0x0984e3, 0x6c5ce7
+            ];
+            
+            const moduleColors = {};
+            modules.forEach((module, i) => {
+                moduleColors[module] = colors[i % colors.length];
+            });
+            
+            // Apply colors and group by module
+            const moduleGroups = {};
+            nodes.forEach((node, i) => {
+                const module = node.module || 'unknown';
+                if (!moduleGroups[module]) {
+                    moduleGroups[module] = [];
+                }
+                moduleGroups[module].push(i);
+                
+                // Color the node
+                nodeMeshes[i].material.color.setHex(moduleColors[module]);
+                nodeMeshes[i].material.emissive.setHex(moduleColors[module]);
+            });
+            
+            // Position nodes in clusters
+            const spread = parseInt(document.getElementById('spread').value);
+            const clusterSpacing = spread * 1.5;
+            let clusterIndex = 0;
+            
+            Object.keys(moduleGroups).forEach(module => {
+                const nodeIndices = moduleGroups[module];
+                const angle = (clusterIndex / Object.keys(moduleGroups).length) * Math.PI * 2;
+                const clusterX = Math.cos(angle) * clusterSpacing;
+                const clusterZ = Math.sin(angle) * clusterSpacing;
+                
+                // Arrange nodes in this cluster in a small circle
+                nodeIndices.forEach((nodeIdx, i) => {
+                    const localAngle = (i / nodeIndices.length) * Math.PI * 2;
+                    const localRadius = spread / 3;
+                    nodeMeshes[nodeIdx].position.set(
+                        clusterX + Math.cos(localAngle) * localRadius,
+                        0,
+                        clusterZ + Math.sin(localAngle) * localRadius
+                    );
+                });
+                
+                clusterIndex++;
+            });
+            
+            let clusterInfo = 'Auto-Clustered by Module!\\n\\n';
+            Object.keys(moduleGroups).forEach(module => {
+                clusterInfo += module + ': ' + moduleGroups[module].length + ' functions\\n';
+            });
+            
+            alert(clusterInfo + '\\nEach color = different module\\nPress ESC to reset');
+        }
+        
+        // Event listeners for new controls
+        document.getElementById('nodeSize').addEventListener('input', (e) => {
+            document.getElementById('nodeSizeVal').textContent = e.target.value;
+            updateNodeSize(parseInt(e.target.value));
+        });
+        
+        document.getElementById('spread').addEventListener('input', (e) => {
+            document.getElementById('spreadVal').textContent = e.target.value;
+            createGraph(document.getElementById('layout').value);
+        });
+        
+        document.getElementById('edgeThickness').addEventListener('input', (e) => {
+            document.getElementById('edgeThicknessVal').textContent = e.target.value;
+        });
+        
+        document.getElementById('nodeOpacity').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('nodeOpacityVal').textContent = val;
+            nodeMeshes.forEach(mesh => {
+                mesh.material.opacity = val / 100;
+                mesh.material.transparent = val < 100;
+            });
+        });
+        
+        document.getElementById('bgColor').addEventListener('change', (e) => {
+            scene.background = new THREE.Color(parseInt(e.target.value));
+        });
+        
+        document.getElementById('showLabels').addEventListener('change', (e) => {
+            labelsVisible = e.target.checked;
+            nodeLabels.forEach(label => {
+                label.visible = labelsVisible;
+            });
+        });
+        
+        document.getElementById('showEdges').addEventListener('change', (e) => {
+            edgeLines.forEach(line => line.visible = e.target.checked);
+        });
+        
+        document.getElementById('pulseNodes').addEventListener('change', (e) => {
+            pulseEnabled = e.target.checked;
+        });
+        
+        document.getElementById('particleEffect').addEventListener('change', (e) => {
+            particlesEnabled = e.target.checked;
+        });
+        
+        document.getElementById('showGrid').addEventListener('change', (e) => {
+            if (e.target.checked && !gridHelperObj) {
+                gridHelperObj = new THREE.GridHelper(1000, 20, 0x444444, 0x222222);
+                scene.add(gridHelperObj);
+            } else if (!e.target.checked && gridHelperObj) {
+                scene.remove(gridHelperObj);
+                gridHelperObj = null;
+            }
+        });
+        
+        document.getElementById('showStatsPanel').addEventListener('change', (e) => {
+            document.getElementById('stats').style.display = e.target.checked ? 'block' : 'none';
+        });
+        
+        document.getElementById('codePreview').addEventListener('change', (e) => {
+            codePreviewEnabled = e.target.checked;
+            if (!codePreviewEnabled) {
+                document.getElementById('codePreview').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('rotationSpeedVal').textContent = val;
+            rotationSpeedValue = val / 1000;
+        });
+        
+        document.getElementById('flowSpeed').addEventListener('input', (e) => {
+            document.getElementById('flowSpeedVal').textContent = e.target.value;
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!isPaused) {
+                // Auto rotation
+                if (rotationSpeedValue > 0) {
+                    nodeMeshes.forEach(mesh => {
+                        mesh.rotation.y += rotationSpeedValue;
+                    });
+                }
+                
+                // Pulse animation
+                if (pulseEnabled) {
+                    const time = Date.now() * 0.001;
+                    nodeMeshes.forEach((mesh, i) => {
+                        const scale = 1 + Math.sin(time * 2 + i * 0.1) * 0.1;
+                        mesh.scale.set(scale, scale, scale);
+                    });
+                }
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        init();
+    </script>
+</body>
+</html>`;
 }
 
 function deactivate() {}

@@ -62,6 +62,11 @@
       {
         "command": "callflow-tracer.changeLayout",
         "title": "CallFlow: Change Graph Layout"
+      },
+      {
+        "command": "callflow-tracer.show3DVisualization",
+        "title": "CallFlow: Show 3D Visualization",
+        "icon": "$(globe)"
       }
     ],
     "menus": {
@@ -159,6 +164,23 @@
           "type": "boolean",
           "default": true,
           "description": "Enable performance profiling"
+        },
+        "callflowTracer.default3DLayout": {
+          "type": "string",
+          "default": "force",
+          "enum": [
+            "force",
+            "sphere",
+            "helix",
+            "grid",
+            "tree"
+          ],
+          "description": "Default 3D visualization layout"
+        },
+        "callflowTracer.enable3DEffects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable 3D visual effects (pulse, particles)"
         }
       }
     }
