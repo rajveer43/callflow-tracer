@@ -63,6 +63,36 @@ from .profiling import (
     PerformanceStats
 )
 
+# AI-powered features (optional, requires LLM provider)
+try:
+    from .ai import (
+        summarize_trace,
+        query_trace,
+        TraceSummarizer,
+        QueryEngine,
+        LLMProvider,
+        OpenAIProvider,
+        AnthropicProvider,
+        GeminiProvider,
+        OllamaProvider,
+        analyze_root_cause,
+        RootCauseAnalyzer,
+        detect_anomalies,
+        AnomalyDetector
+    )
+    _ai_available = True
+except ImportError as e:
+    # AI features not available (missing dependencies)
+    _ai_available = False
+    def summarize_trace(*args, **kwargs):
+        raise ImportError("AI features require LLM provider packages. Install with: pip install openai anthropic google-generativeai requests")
+    def query_trace(*args, **kwargs):
+        raise ImportError("AI features require LLM provider packages. Install with: pip install openai anthropic google-generativeai requests")
+    def analyze_root_cause(*args, **kwargs):
+        raise ImportError("AI features require LLM provider packages. Install with: pip install openai anthropic google-generativeai requests")
+    def detect_anomalies(*args, **kwargs):
+        raise ImportError("AI features require LLM provider packages. Install with: pip install openai anthropic google-generativeai requests")
+
 # Convenience function for one-liner usage
 def trace_and_export(output_file: str, include_args: bool = False):
     """
@@ -124,8 +154,28 @@ __all__ = [
     'profile_section',
     'get_memory_usage',
     
+    # AI features (optional)
+    'summarize_trace',
+    'query_trace',
+    'analyze_root_cause',
+    'detect_anomalies',
+    
     # Package metadata
     '__version__',
     '__author__',
     '__email__'
 ]
+
+# Add AI classes to __all__ if available
+if _ai_available:
+    __all__.extend([
+        'TraceSummarizer',
+        'QueryEngine',
+        'LLMProvider',
+        'OpenAIProvider',
+        'AnthropicProvider',
+        'GeminiProvider',
+        'OllamaProvider',
+        'RootCauseAnalyzer',
+        'AnomalyDetector'
+    ])

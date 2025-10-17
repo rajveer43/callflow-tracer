@@ -1,0 +1,22 @@
+# Optional dependencies for AI features
+# Install with: pip install -r requirements-ai.txt
+
+# Choose one or more LLM providers:
+
+# OpenAI (GPT-4, GPT-3.5, etc.)
+openai>=1.0.0
+
+# Anthropic (Claude)
+anthropic>=0.18.0
+
+# Google Gemini
+google-generativeai>=0.3.0
+
+# For Ollama (local LLM) - only requests needed
+requests>=2.31.0
+
+# Note: You only need to install the provider(s) you plan to use
+# For example, if using only OpenAI:
+#   pip install openai
+# Or if using only Gemini:
+#   pip install google-generativeai
