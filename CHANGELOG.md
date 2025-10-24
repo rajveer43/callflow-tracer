@@ -3,185 +3,119 @@
 All notable changes to CallFlow Tracer will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Latest] - 2025-10-05
+## [0.2.5] - 2025-10-24
 
-### 🎉 Major Features Added
+### New Features
+- **Enhanced FastAPI Integration**
+  - Modern FastAPI example with production-ready patterns
+  - Pydantic models for request/response validation
+  - Comprehensive error handling and HTTP exception handlers
+  - CORS middleware configuration
+  - Health check endpoint
+  - Multiple endpoint examples (CRUD, search, calculator)
+  - Proper async/await patterns with lifespan management
+  - Request/response logging middleware
+  - OpenAPI documentation with detailed examples
 
-#### Enhanced Flamegraph Visualization
-- **Statistics Panel**: Comprehensive metrics dashboard
-  - Total functions, calls, execution time
-  - Average time per call
-  - Call depth visualization
-  - Slowest function identification (bottleneck!)
-  - Most called function tracking
-  
-- **5 Color Schemes**: Choose the best view for your analysis
-  - `default`: Red-Yellow-Green gradient
-  - `hot`: Red-Orange (highlights hot spots)
-  - `cool`: Blue-Green (easy on eyes)
-  - `rainbow`: Full spectrum
-  - `performance`: Green=fast, Red=slow (RECOMMENDED!)
+### Framework Integrations
+- **FastAPI Integration**: Enhanced with modern patterns, validation, and error handling
+- **Flask Integration**: Middleware for automatic request tracing
+- **Django Integration**: Middleware and decorators for Django views
+- **SQLAlchemy Integration**: Database query tracing and performance monitoring
+- **Psycopg2 Integration**: PostgreSQL query tracing with execution time tracking
 
-- **Search Functionality**: Find functions quickly
-  - Real-time search box
-  - Highlights matching functions
-  - Case-insensitive search
-  - Clear button to reset
+### VSCode Extension
+- **Interactive Visualization**: View call graphs directly in VS Code editor
+- **One-Click Tracing**: Trace files or functions with a single command
+- **3D Visualization**: Explore call graphs in 3D space
+- **Multiple Layouts**: Hierarchical, force-directed, circular, and timeline layouts
+- **Export Options**: PNG and JSON export from the editor
+- **Performance Profiling**: Built-in CPU profiling integration
+- **Module Filtering**: Filter visualizations by Python modules
+- **Real-time Updates**: Automatic trace updates on file changes (optional)
 
-- **SVG Export**: High-quality vector graphics
-  - One-click export
-  - Perfect for presentations
-  - Preserves all colors and details
+### Examples
+- Updated `fast_apiexample.py` with:
+  - Modern lifespan management (replacing deprecated startup/shutdown events)
+  - Pydantic models with validation
+  - Multiple HTTP methods (GET, POST)
+  - Query parameters and path parameters
+  - Error handling with proper HTTP status codes
+  - In-memory database example
+  - Search functionality
+  - Calculator endpoint for demonstration
+  - Comprehensive docstrings and comments
 
-- **Modern UI**: Professional and responsive
-  - Gradient backgrounds
-  - Smooth animations
-  - Hover effects
-  - Mobile-friendly design
+### Improvements
+- Better async/await support in FastAPI integration
+- Improved error messages and logging
+- Enhanced code organization and type hints
+- Production-ready example patterns
+- Better separation of concerns
 
-- **Optimization Tips**: Built-in guidance
-  - How to read flamegraphs
-  - What to look for
-  - Performance optimization tips
+### Documentation
+- Updated README with framework integration examples
+- Enhanced FastAPI example documentation
+- Added usage examples for all integrations
+- Improved installation instructions
 
-#### Jupyter Notebook Integration
-- **Magic Commands**:
-  - `%callflow_trace` - Line magic for single lines
-  - `%%callflow_cell_trace` - Cell magic for entire cells
+### Compatibility
+- Fully backward compatible with v0.2.4
+- Python 3.8+ support maintained
+- All existing features continue to work
 
-- **Inline Visualization**:
-  - `display_callgraph()` - Display interactive graphs in notebooks
-  - Custom dimensions and layouts
-  - Full interactivity
+---
 
-- **Full Feature Support**:
-  - All tracing features work in Jupyter
-  - Profiling integration
-  - Export capabilities
+## [0.2.4] - 2025-10-07
 
-### 🐛 Critical Fixes
+### New
+- **Async/Await Tracing**
+  - `@trace_async`, `trace_scope_async()` for async code
+  - `gather_traced()` to track concurrent task execution
+  - `AsyncCallGraph` and `get_async_stats()` for timeline and concurrency metrics
+- **Comparison Mode**
+  - `compare_graphs()` to compute before/after diffs
+  - `export_comparison_html()` split-screen HTML with improvements/regressions
+- **Memory Leak Detection**
+  - `MemoryLeakDetector`, `detect_leaks()` context manager
+  - `@track_allocations` decorator and `MemorySnapshot`
+  - `find_reference_cycles()`, `get_memory_growth()`, `get_top_memory_consumers()`
+  - Beautiful HTML leak reports with Chart.js (growth, type distribution, snapshots, recommendations)
 
-#### CPU Profiling Fix
-- **Problem**: CPU profile always showed 0.000s execution time, 0 function calls, 0 hot spots
-- **Root Cause**: Profiler reference was stored but not the actual profiling data snapshot
-- **Solution**: 
-  - Added `cpu_profile_stats` field to store `pstats.Stats` snapshot
-  - Create snapshot before profiler stops
-  - Updated `_get_cpu_stats()` to use the snapshot
-- **Impact**: ✅ CPU profiling now shows actual execution times and accurate statistics
+### Improvements
+- HTML UI/UX: Fixed module filtering (with smooth fit animation), corrected Circular/Timeline layouts, improved JSON export (no `network.getData()`), modern CPU profile panel (collapsible)
+- Documentation: Added `docs/v0_2_4_features.md`, expanded `docs/API_DOCUMENTATION.md`, updated `docs/index.md`
 
-#### Module Filter Fix
-- **Problem**: Module filter dropdown was populated but had no functionality
-- **Root Cause**: No event listener attached to handle filter changes
-- **Solution**:
-  - Added change event listener to filter dropdown
-  - Implemented node and edge filtering logic
-  - Added smooth zoom animation
-  - Handle empty modules as "Main Module"
-- **Impact**: ✅ Module filtering now works correctly with visual feedback
+### Internal
+- Version bumped to `0.2.4` in `pyproject.toml` and `callflow_tracer/__init__.py`
+- Added tests and examples for new features
 
-#### Layout Fixes
-- **Problem**: Circular and Timeline layouts were not working
-- **Root Cause**: Used incorrect `network.moveNode()` API which doesn't exist in vis.js
-- **Solution**:
-  - Replaced with proper node updates using `data.nodes.clear()` and `data.nodes.add()`
-  - Fixed Circular layout with trigonometry calculations
-  - Fixed Timeline layout with proper sorting by execution time
-  - Added position management (fixed vs dynamic)
-  - Removed duplicate layout handlers
-- **Impact**: ✅ All 4 layouts (Hierarchical, Force, Circular, Timeline) now work correctly
+### Compatibility
+- Backward compatible. New features are additive and opt‑in.
 
-#### JSON Export Fix
-- **Problem**: "network.getData is not a function" error when clicking "Export as JSON"
-- **Root Cause**: `network.getData()` method is not available in vis.js networks
-- **Solution**:
-  - Use original `nodes` and `edges` arrays instead
-  - Added detailed error handling and logging
-  - Enhanced metadata structure
-  - Added success feedback
-- **Impact**: ✅ JSON export now works reliably
+---
 
-#### Tracer Stability Fix
-- **Problem**: Test programs would stop executing after the first few print statements
-- **Root Cause**: 
-  - Insufficient error handling in `_trace_calls` method
-  - Conflicts between `@trace` decorator and `trace_scope` context manager
-  - Missing exception handling caused silent failures
-- **Solution**:
-  - Enhanced error handling in `_trace_calls` with try-except blocks
-  - Added filtering to skip internal callflow-tracer functions
-  - Fixed `@trace` decorator integration with active trace_scope contexts
-  - Improved caller name detection using `sys._getframe(3)`
-  - Better global state management
-- **Impact**: ✅ Programs now run to completion, generating complete visualizations
+## [0.2.3] - 2025-09-28
 
-### ✨ Enhancements
+### Fixed
+- Stability fixes in tracer core
+- Hardened error handling in `CallTracer._trace_calls`
+- Resolved conflicts between `@trace` decorator and `trace_scope`
+- Improved caller detection and global state management
 
-#### Enhanced HTML Exporter
-- **CPU Profile Section**:
-  - Collapsible section with gradient header
-  - Fire emoji icon (🔥) for visual appeal
-  - Hover effects and smooth transitions
-  - Dark code theme for profile data
-  - Toggle functionality
+### Added
+- Improved JSON export with richer metadata
+- Better error handling in export functions
 
-- **Improved UI**:
-  - Modern card-based layouts
-  - Professional color schemes
-  - Better spacing and typography
-  - Responsive design improvements
-
-#### Flamegraph Enhancements
-- Custom titles support
-- Configurable dimensions (width, height)
-- Minimum width threshold to hide small functions
-- Better tooltip information with percentages
-- Responsive window resizing
-- Auto-fit functionality
-
-#### Export Enhancements
-- Better metadata in JSON exports
-- Timestamp and version information
-- Structured export format
-- Error handling and validation
-
-### 📚 Documentation
-
-#### New Documentation Files
-- `README_NEW.md` - Comprehensive updated README
-- `docs/API_DOCUMENTATION.md` - Complete API reference
-- `docs/FEATURES_COMPLETE.md` - All features documented
-- `ENHANCED_FEATURES.md` - Enhanced features guide
-- `FLAMEGRAPH_SUMMARY.md` - Flamegraph overview
-- `CHANGELOG.md` - This file
-
-#### Updated Documentation
-- `TESTING_GUIDE.md` - Added flamegraph testing section
-- `QUICK_TEST.md` - Added flamegraph quick tests
-- `examples/FLAMEGRAPH_README.md` - Complete flamegraph guide
-- `examples/JUPYTER_README.md` - Jupyter integration guide
-
-### 🧪 Testing
-
-#### New Test Files
-- `tests/test_flamegraph_enhanced.py` - 10 comprehensive tests for enhanced features
-- `tests/test_jupyter_integration.py` - 7 tests for Jupyter integration
-- `tests/test_cprofile_fix.py` - Tests for CPU profiling fix
-- `tests/test_flamegraph.py` - 10 tests for basic flamegraph
-
-#### New Example Files
-- `examples/flamegraph_enhanced_demo.py` - 7 demos of enhanced features
-- `examples/jupyter_example.ipynb` - Interactive Jupyter notebook
-- `examples/jupyter_standalone_demo.py` - Standalone Jupyter demo
-- `examples/flamegraph_example.py` - 7 flamegraph examples
-
-### 📦 New Modules
-- `callflow_tracer/flamegraph_enhanced.py` - Enhanced flamegraph HTML generation
-- `callflow_tracer/jupyter.py` - Jupyter notebook integration
+### Changed
+- UI enhancements in HTML exporter
+- Added collapsible CPU profiling section
+- Implemented working module filter
+- Restored Circular and Timeline layouts
 
 ---
 
@@ -236,36 +170,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Feature Summary by Version
 
 ### Latest Version Features
-✅ Enhanced flamegraph with statistics  
-✅ 5 color schemes  
-✅ Search functionality  
-✅ SVG export  
-✅ Jupyter integration  
-✅ Magic commands  
-✅ Fixed CPU profiling  
-✅ Fixed module filtering  
-✅ Fixed all layouts  
-✅ Fixed JSON export  
-✅ Modern UI  
-✅ Responsive design  
+- Enhanced flamegraph with statistics  
+- 5 color schemes  
+- Search functionality  
+- SVG export  
+- Jupyter integration  
+- Magic commands  
+- Fixed CPU profiling  
+- Fixed module filtering  
+- Fixed all layouts  
+- Fixed JSON export  
+- Modern UI  
+- Responsive design  
 
 ### 0.2.2 Features
-✅ Stable tracing  
-✅ Better error handling  
-✅ Improved exports  
-✅ UI enhancements  
+- Stable tracing  
+- Better error handling  
+- Improved exports  
+- UI enhancements  
 
 ### 0.2.0 Features
-✅ Performance profiling  
-✅ Memory tracking  
-✅ Basic flamegraph  
-✅ cProfile integration  
+- Performance profiling  
+- Memory tracking  
+- Basic flamegraph  
+- cProfile integration  
 
 ### 0.1.0 Features
-✅ Call tracing  
-✅ Call graph  
-✅ HTML/JSON export  
-✅ Interactive viz  
+- Call tracing  
+- Call graph  
+- HTML/JSON export  
+- Interactive viz  
 
 ---
 
@@ -375,4 +309,4 @@ We welcome contributions! See the main README for guidelines.
 
 ---
 
-*Last Updated: 2025-10-05*
+*Last Updated: 2025-10-07*

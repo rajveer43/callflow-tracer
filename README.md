@@ -8,7 +8,33 @@
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## 🎉 What's New in Latest Version (2025-10-06)
+## 🎉 What's New in v0.2.5 (2025-10-24)
+
+### **🚀 Enhanced Framework Integrations**
+- **Modern FastAPI Example**: Production-ready patterns with Pydantic validation
+- **Lifespan Management**: Proper async startup/shutdown handling
+- **Error Handling**: Comprehensive HTTP exception handlers
+- **CORS Support**: Pre-configured middleware for cross-origin requests
+- **Multiple Endpoints**: CRUD operations, search, and calculator examples
+- **Request/Response Logging**: Automatic logging middleware
+- **OpenAPI Docs**: Enhanced interactive API documentation
+
+### **🔌 Framework Support**
+- **FastAPI**: Full async/await support with modern patterns
+- **Flask**: Automatic request tracing middleware
+- **Django**: View decorators and middleware integration
+- **SQLAlchemy**: Database query performance monitoring
+- **Psycopg2**: PostgreSQL query tracing
+
+### **🎨 VSCode Extension**
+- **Interactive Visualization**: View call graphs directly in VS Code
+- **Real-time Tracing**: Trace files with a single click
+- **3D Visualization**: Explore call graphs in 3D space
+- **Multiple Layouts**: Hierarchical, force-directed, circular, timeline
+- **Export Options**: PNG and JSON export from the editor
+- **Performance Profiling**: Built-in CPU profiling integration
+
+## 🎉 What's New in v0.2.4 (2025-10-06)
 
 ### **⚡ NEW: Async/Await Support**
 - **@trace_async Decorator**: Trace async functions with full async/await support
@@ -116,10 +142,17 @@ cd callflow-tracer
 pip install -e .
 ```
 
-### From development
+#### For Development
 ```bash
 pip install -e .[dev]
 ```
+
+#### VSCode Extension
+1. Open VS Code
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "CallFlow Tracer"
+4. Click Install
+5. Right-click any Python file → "CallFlow: Trace Current File"
 
 ### Basic Usage
 
@@ -368,6 +401,272 @@ generate_flamegraph(
 You get:
 - **callgraph.html**: Interactive network showing function relationships + CPU profile
 - **flamegraph.html**: Stacked bars showing time distribution + statistics
+
+---
+
+## 🔌 Framework Integration Examples
+
+### FastAPI Integration
+
+```python
+from fastapi import FastAPI, HTTPException, status
+from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
+from callflow_tracer import trace_scope
+from callflow_tracer.integrations.fastapi_integration import setup_fastapi_tracing
+
+# Define Pydantic models
+class Item(BaseModel):
+    name: str = Field(..., min_length=3, max_length=50)
+    price: float = Field(..., gt=0)
+    in_stock: bool = True
+
+class ItemResponse(Item):
+    id: int
+    created_at: str
+
+# Setup tracing with lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    global _cft_scope
+    _cft_scope = trace_scope("fastapi_trace.html")
+    _cft_scope.__enter__()
+    yield
+    # Shutdown
+    _cft_scope.__exit__(None, None, None)
+
+# Create FastAPI app
+app = FastAPI(
+    title="My API",
+    lifespan=lifespan
+)
+
+# Setup automatic tracing
+setup_fastapi_tracing(app)
+
+# Add CORS middleware
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define endpoints
+@app.get("/items/{item_id}", response_model=ItemResponse)
+async def get_item(item_id: int):
+    if item_id not in database:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Item {item_id} not found"
+        )
+    return {"id": item_id, **database[item_id]}
+
+@app.post("/items", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
+async def create_item(item: Item):
+    new_id = max(database.keys(), default=0) + 1
+    database[new_id] = item.dict()
+    return {"id": new_id, **database[new_id]}
+```
+
+**Run it:**
+```bash
+uvicorn app:app --reload
+# Visit http://localhost:8000/docs for interactive API docs
+# Trace saved to fastapi_trace.html
+```
+
+---
+
+### Flask Integration
+
+```python
+from flask import Flask, jsonify, request
+from callflow_tracer import trace_scope
+from callflow_tracer.integrations.flask_integration import setup_flask_tracing
+
+app = Flask(__name__)
+
+# Setup automatic tracing
+setup_flask_tracing(app)
+
+# Initialize trace scope
+trace_context = trace_scope("flask_trace.html")
+trace_context.__enter__()
+
+@app.route('/api/users/<int:user_id>')
+def get_user(user_id):
+    user = database.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify(user)
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    user_id = len(database) + 1
+    database[user_id] = data
+    return jsonify({"id": user_id, **data}), 201
+
+if __name__ == '__main__':
+    try:
+        app.run(debug=True)
+    finally:
+        trace_context.__exit__(None, None, None)
+```
+
+---
+
+### Django Integration
+
+```python
+# settings.py
+MIDDLEWARE = [
+    'callflow_tracer.integrations.django_integration.CallFlowTracerMiddleware',
+    # ... other middleware
+]
+
+# views.py
+from django.http import JsonResponse
+from callflow_tracer.integrations.django_integration import trace_view
+
+@trace_view
+def user_list(request):
+    users = User.objects.all()
+    return JsonResponse({
+        'users': list(users.values())
+    })
+
+@trace_view
+def user_detail(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        return JsonResponse(user.to_dict())
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+```
+
+---
+
+### SQLAlchemy Integration
+
+```python
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from callflow_tracer import trace_scope
+from callflow_tracer.integrations.sqlalchemy_integration import setup_sqlalchemy_tracing
+
+# Create engine
+engine = create_engine('sqlite:///example.db')
+Base = declarative_base()
+
+# Define model
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    email = Column(String)
+
+# Setup tracing
+setup_sqlalchemy_tracing(engine)
+
+# Use with trace scope
+with trace_scope("sqlalchemy_trace.html"):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    # Queries will be traced
+    users = session.query(User).filter(User.name.like('%John%')).all()
+    
+    # Inserts will be traced
+    new_user = User(name="John Doe", email="john@example.com")
+    session.add(new_user)
+    session.commit()
+```
+
+---
+
+### Psycopg2 Integration
+
+```python
+import psycopg2
+from callflow_tracer import trace_scope
+from callflow_tracer.integrations.psycopg2_integration import setup_psycopg2_tracing
+
+# Connect to PostgreSQL
+conn = psycopg2.connect(
+    dbname="mydb",
+    user="user",
+    password="password",
+    host="localhost"
+)
+
+# Setup tracing
+setup_psycopg2_tracing(conn)
+
+# Use with trace scope
+with trace_scope("postgres_trace.html"):
+    cursor = conn.cursor()
+    
+    # Queries will be traced with execution time
+    cursor.execute("SELECT * FROM users WHERE age > %s", (18,))
+    users = cursor.fetchall()
+    
+    cursor.execute("""
+        INSERT INTO users (name, email, age) 
+        VALUES (%s, %s, %s)
+    """, ("Jane Doe", "jane@example.com", 25))
+    
+    conn.commit()
+    cursor.close()
+```
+
+---
+
+## 🎨 VSCode Extension Usage
+
+### Installation
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (or `Cmd+Shift+X` on Mac)
+3. Search for "CallFlow Tracer"
+4. Click **Install**
+
+### Quick Start
+1. Open any Python file
+2. Right-click in the editor
+3. Select **"CallFlow: Trace Current File"**
+4. View the interactive visualization in the side panel
+
+### Features
+- **One-Click Tracing**: Trace entire files or selected functions
+- **Interactive Graphs**: Zoom, pan, and explore call relationships
+- **3D Visualization**: View call graphs in 3D space
+- **Multiple Layouts**: Switch between hierarchical, force-directed, circular, and timeline
+- **Export Options**: Save as PNG or JSON
+- **Performance Profiling**: Built-in CPU profiling
+- **Module Filtering**: Filter by Python modules
+
+### Commands
+- `CallFlow: Trace Current File` - Trace the entire file
+- `CallFlow: Trace Selected Function` - Trace only selected function
+- `CallFlow: Show Visualization` - Open visualization panel
+- `CallFlow: Show 3D Visualization` - View in 3D
+- `CallFlow: Export as PNG` - Export as image
+- `CallFlow: Export as JSON` - Export trace data
+
+### Settings
+```json
+{
+  "callflowTracer.pythonPath": "python3",
+  "callflowTracer.defaultLayout": "force",
+  "callflowTracer.autoTrace": false,
+  "callflowTracer.enableProfiling": true
+}
+```
 
 ---
 

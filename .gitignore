@@ -152,5 +152,5 @@ context_test.html
 *.html
 *.json
 
-
+node_modules/
 NOTES 
