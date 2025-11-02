@@ -15,7 +15,7 @@ Example usage:
         my_function()
 """
  
-__version__ = "0.2.4"
+__version__ = "0.3.1"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
@@ -90,6 +90,41 @@ from .memory_leak_detector import (
     ObjectTracker
 )
 
+# Code quality metrics
+from .code_quality import (
+    analyze_codebase,
+    ComplexityAnalyzer,
+    MaintainabilityAnalyzer,
+    TechnicalDebtAnalyzer,
+    QualityTrendAnalyzer,
+    ComplexityMetrics,
+    MaintainabilityMetrics,
+    TechnicalDebtIndicator,
+    QualityTrend
+)
+
+# Predictive analysis
+from .predictive_analysis import (
+    PerformancePredictor,
+    CapacityPlanner,
+    ScalabilityAnalyzer,
+    ResourceForecaster,
+    generate_predictive_report,
+    PerformancePrediction,
+    CapacityPrediction,
+    ScalabilityAnalysis,
+    ResourceForecast
+)
+
+# Code churn analysis
+from .code_churn import (
+    CodeChurnAnalyzer,
+    ChurnCorrelationAnalyzer,
+    generate_churn_report,
+    ChurnMetrics,
+    ChurnCorrelation
+)
+
 # Convenience function for one-liner usage
 def trace_and_export(output_file: str, include_args: bool = False):
     """
@@ -155,8 +190,40 @@ __all__ = [
     'profile_section',
     'get_memory_usage',
     
+    # Code quality metrics
+    'analyze_codebase',
+    'ComplexityAnalyzer',
+    'MaintainabilityAnalyzer',
+    'TechnicalDebtAnalyzer',
+    'QualityTrendAnalyzer',
+    'ComplexityMetrics',
+    'MaintainabilityMetrics',
+    'TechnicalDebtIndicator',
+    'QualityTrend',
+    
+    # Predictive analysis
+    'PerformancePredictor',
+    'CapacityPlanner',
+    'ScalabilityAnalyzer',
+    'ResourceForecaster',
+    'generate_predictive_report',
+    'PerformancePrediction',
+    'CapacityPrediction',
+    'ScalabilityAnalysis',
+    'ResourceForecast',
+    
+    # Code churn analysis
+    'CodeChurnAnalyzer',
+    'ChurnCorrelationAnalyzer',
+    'generate_churn_report',
+    'ChurnMetrics',
+    'ChurnCorrelation',
+    
     # Package metadata
     '__version__',
     '__author__',
-    '__email__'
+    '__email__',
+    
+    # CLI
+    'cli'
 ]

@@ -52,6 +52,12 @@ setup(
             'flake8'
         ],
     },
+    entry_points={
+        'console_scripts': [
+            'callflow-tracer=callflow_tracer.cli:main',
+            'callflow=callflow_tracer.cli:main',
+        ],
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

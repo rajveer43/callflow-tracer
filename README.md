@@ -8,6 +8,56 @@
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+## 🎉 What's New in v0.3.1 (2025-11-02)
+
+### **📊 Code Quality Analysis**
+- **Complexity Metrics**: Cyclomatic and cognitive complexity calculation
+- **Maintainability Index**: 0-100 scale with detailed metrics
+- **Halstead Metrics**: Volume, difficulty, and effort analysis
+- **Technical Debt Scoring**: Identify and quantify technical debt
+- **Quality Trends**: Track code quality over time
+- **HTML/JSON Reports**: Beautiful interactive reports
+
+### **🔮 Predictive Analysis**
+- **Performance Prediction**: Predict future performance degradation
+- **Capacity Planning**: Forecast when limits will be reached
+- **Scalability Analysis**: Assess code scalability characteristics
+- **Resource Forecasting**: Predict resource usage trends
+- **Risk Assessment**: Multi-factor risk evaluation
+- **Confidence Scoring**: Data-driven confidence levels
+
+### **📈 Code Churn Analysis**
+- **Git History Analysis**: Analyze commits and changes
+- **Hotspot Identification**: Find high-risk files
+- **Churn Correlation**: Correlate with quality metrics
+- **Bug Prediction**: Estimate bug correlation
+- **Risk Assessment**: Comprehensive risk evaluation
+- **Actionable Recommendations**: Specific improvement suggestions
+
+### **🔌 Framework Integration Setup**
+- **Flask Integration**: Automatic request tracing
+- **FastAPI Integration**: Async endpoint tracing
+- **Django Integration**: View and middleware tracing
+- **SQLAlchemy Integration**: Database query monitoring
+- **psycopg2 Integration**: PostgreSQL query tracing
+- **Code Snippet Insertion**: Ready-to-use integration code
+
+### **🎯 Command-Line Interface (CLI)**
+- **10 CLI Commands**: Complete CLI for all features
+- **No Python Code Needed**: Run analysis from terminal
+- **HTML/JSON Output**: Multiple export formats
+- **Progress Notifications**: Real-time feedback
+- **Batch Processing**: Analyze entire projects
+
+### **🔧 VS Code Extension Updates**
+- **Quality Analysis Command**: Analyze code quality from editor
+- **Performance Prediction**: Predict issues from current file
+- **Churn Analysis**: Analyze code changes with git history
+- **Framework Integration**: Insert integration code snippets
+- **CLI Help**: Interactive help for all commands
+
+---
+
 ## 🎉 What's New in v0.2.5 (2025-10-24)
 
 ### **🚀 Enhanced Framework Integrations**
@@ -104,6 +154,33 @@
 - ✅ **Multiple Export Formats**: HTML, JSON, SVG
 - ✅ **Zero Config**: Works out of the box
 
+### 📊 **Code Quality Analysis (NEW in v0.3.0)**
+- ✅ **Complexity Metrics**: Cyclomatic and cognitive complexity
+- ✅ **Maintainability Index**: 0-100 scale with detailed analysis
+- ✅ **Technical Debt Scoring**: Identify and quantify debt
+- ✅ **Quality Trends**: Track metrics over time
+- ✅ **Halstead Metrics**: Volume, difficulty, effort analysis
+
+### 🔮 **Predictive Analysis (NEW in v0.3.0)**
+- ✅ **Performance Prediction**: Predict future degradation
+- ✅ **Capacity Planning**: Forecast limit breaches
+- ✅ **Scalability Analysis**: Assess scalability characteristics
+- ✅ **Resource Forecasting**: Predict resource usage
+- ✅ **Risk Assessment**: Multi-factor evaluation
+
+### 📈 **Code Churn Analysis (NEW in v0.3.0)**
+- ✅ **Git History Analysis**: Analyze commits and changes
+- ✅ **Hotspot Identification**: Find high-risk files
+- ✅ **Quality Correlation**: Correlate with quality metrics
+- ✅ **Bug Prediction**: Estimate bug correlation
+- ✅ **Actionable Recommendations**: Specific improvements
+
+### 🎯 **Command-Line Interface (NEW in v0.3.0)**
+- ✅ **10 CLI Commands**: Complete terminal interface
+- ✅ **No Code Required**: Run analysis from command line
+- ✅ **Batch Processing**: Analyze entire projects
+- ✅ **Multiple Formats**: HTML and JSON output
+
 ### 🔥 **Flamegraph Features**
 - 📊 **Statistics Dashboard**: Total time, calls, depth, slowest function
 - 🎨 **5 Color Schemes**: Choose the best view for your analysis
@@ -125,6 +202,31 @@
 - 🔍 **Module Filtering**: Focus on specific parts of your code
 - 📊 **Rich Tooltips**: Detailed metrics on hover
 - 🎯 **Color Coding**: Performance-based coloring
+
+## 🎯 New in v0.3.0: Quick Start with CLI
+
+### Command-Line Interface (No Python Code Needed!)
+
+```bash
+# Analyze code quality
+callflow-tracer quality . -o quality_report.html
+
+# Predict performance issues
+callflow-tracer predict history.json -o predictions.html
+
+# Analyze code churn
+callflow-tracer churn . --days 90 -o churn_report.html
+
+# Trace function calls
+callflow-tracer trace script.py -o trace.html
+
+# Generate flamegraph
+callflow-tracer flamegraph script.py -o flamegraph.html
+```
+
+**All commands generate beautiful HTML reports!** 📊
+
+---
 
 ## 🚀 Quick Start
 
@@ -174,6 +276,96 @@ export_html(graph, "fibonacci.html", title="Fibonacci Call Graph")
 ```
 
 Open `fibonacci.html` in your browser to see the interactive visualization!
+
+---
+
+## 📊 Code Quality Analysis (NEW in v0.3.0)
+
+Analyze code quality metrics with a single command:
+
+```bash
+# Analyze code quality
+callflow-tracer quality . -o quality_report.html
+
+# Track trends over time
+callflow-tracer quality . --track-trends --format json
+```
+
+**What You Get:**
+- 📈 **Complexity Metrics**: Cyclomatic and cognitive complexity
+- 📊 **Maintainability Index**: 0-100 scale
+- 💾 **Technical Debt**: Quantified debt scoring
+- 🎯 **Halstead Metrics**: Volume, difficulty, effort
+- 📋 **Trend Analysis**: Track metrics over time
+
+**Python API:**
+```python
+from callflow_tracer.code_quality import analyze_codebase
+
+results = analyze_codebase("./src")
+print(f"Average Complexity: {results['summary']['average_complexity']:.2f}")
+print(f"Critical Issues: {results['summary']['critical_issues']}")
+```
+
+---
+
+## 🔮 Predictive Analysis (NEW in v0.3.0)
+
+Predict future performance issues:
+
+```bash
+# Predict performance issues
+callflow-tracer predict history.json -o predictions.html
+```
+
+**What You Get:**
+- 🎯 **Performance Prediction**: Predict degradation
+- 📈 **Capacity Planning**: Forecast limit breaches
+- 🔍 **Scalability Analysis**: Assess scalability
+- 💡 **Risk Assessment**: Multi-factor evaluation
+- 📊 **Confidence Scoring**: Data-driven confidence
+
+**Python API:**
+```python
+from callflow_tracer.predictive_analysis import PerformancePredictor
+
+predictor = PerformancePredictor("history.json")
+predictions = predictor.predict_performance_issues(current_trace)
+
+for pred in predictions:
+    if pred.risk_level == "Critical":
+        print(f"CRITICAL: {pred.function_name}")
+        print(f"  Predicted time: {pred.predicted_time:.4f}s")
+```
+
+---
+
+## 📈 Code Churn Analysis (NEW in v0.3.0)
+
+Identify high-risk files using git history:
+
+```bash
+# Analyze code churn
+callflow-tracer churn . --days 90 -o churn_report.html
+```
+
+**What You Get:**
+- 🔥 **Hotspot Identification**: Find high-risk files
+- 📊 **Churn Metrics**: Commits, changes, authors
+- 🔗 **Quality Correlation**: Correlate with quality
+- 🐛 **Bug Prediction**: Estimate bug correlation
+- 💡 **Recommendations**: Actionable improvements
+
+**Python API:**
+```python
+from callflow_tracer.code_churn import generate_churn_report
+
+report = generate_churn_report(".", days=90)
+print(f"High risk files: {report['summary']['high_risk_files']}")
+
+for hotspot in report['hotspots'][:5]:
+    print(f"{hotspot['file_path']}: {hotspot['hotspot_score']:.1f}")
+```
 
 ---
 
@@ -967,6 +1159,16 @@ callflow-tracer/
 - **Privacy**: Function arguments are truncated by default for security
 
 ## 📚 Documentation
+
+### 🆕 v0.3.0 Documentation (NEW!)
+- **[NEW_FEATURES_INDEX.md](docs/NEW_FEATURES_INDEX.md)** - Complete v0.3.0 feature index
+- **[CLI_GUIDE.md](docs/CLI_GUIDE.md)** - Command-line interface reference
+- **[CODE_QUALITY_GUIDE.md](docs/CODE_QUALITY_GUIDE.md)** - Code quality analysis guide
+- **[PREDICTIVE_ANALYSIS_GUIDE.md](docs/PREDICTIVE_ANALYSIS_GUIDE.md)** - Predictive analytics guide
+- **[CODE_CHURN_GUIDE.md](docs/CODE_CHURN_GUIDE.md)** - Code churn analysis guide
+- **[INTEGRATIONS_GUIDE.md](docs/INTEGRATIONS_GUIDE.md)** - Framework integrations guide
+- **[v0_3_0_RELEASE_NOTES.md](docs/v0_3_0_RELEASE_NOTES.md)** - Release notes
+- **[FEATURE_MAPPING.md](docs/FEATURE_MAPPING.md)** - Feature mapping and cross-reference
 
 ### Quick References
 - **[Quick Test Guide](QUICK_TEST.md)** - Fast testing reference

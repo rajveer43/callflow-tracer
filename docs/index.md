@@ -26,6 +26,14 @@ Complete documentation index for CallFlow Tracer.
 10. **[FLAMEGRAPH_SUMMARY.md](../FLAMEGRAPH_SUMMARY.md)** - Flamegraph summary
 11. **[JUPYTER_README.md](../examples/JUPYTER_README.md)** - Jupyter integration
 
+### 🆕 New Features (v0.3.0)
+12. **[NEW_FEATURES_INDEX.md](NEW_FEATURES_INDEX.md)** - New features overview and index
+13. **[CLI_GUIDE.md](CLI_GUIDE.md)** - Command-line interface guide
+14. **[CODE_QUALITY_GUIDE.md](CODE_QUALITY_GUIDE.md)** - Code quality analysis
+15. **[PREDICTIVE_ANALYSIS_GUIDE.md](PREDICTIVE_ANALYSIS_GUIDE.md)** - Predictive analytics
+16. **[CODE_CHURN_GUIDE.md](CODE_CHURN_GUIDE.md)** - Code churn analysis
+17. **[INTEGRATIONS_GUIDE.md](INTEGRATIONS_GUIDE.md)** - Framework integrations
+
 ### 🧪 Testing Documentation
 12. **[TESTING_GUIDE.md](../TESTING_GUIDE.md)** - Comprehensive testing guide
 13. **Test Files**: `tests/test_*.py` - Automated test suites
@@ -82,6 +90,14 @@ Complete documentation index for CallFlow Tracer.
 - [Comparison Mode](v0_2_4_features.md#-comparison-mode)
 - [Memory Leak Detection](v0_2_4_features.md#-memory-leak-detection)
 - [v0.2.4 Release Notes](v0_2_4_features.md)
+
+#### **New in v0.3.0**
+- [CLI Commands](CLI_GUIDE.md)
+- [Code Quality Analysis](CODE_QUALITY_GUIDE.md)
+- [Predictive Analysis](PREDICTIVE_ANALYSIS_GUIDE.md)
+- [Code Churn Analysis](CODE_CHURN_GUIDE.md)
+- [Framework Integrations](INTEGRATIONS_GUIDE.md)
+- [New Features Index](NEW_FEATURES_INDEX.md)
 
 ---
 
@@ -230,6 +246,12 @@ Complete documentation index for CallFlow Tracer.
 | `INSTALLATION_GUIDE.md` | Installation guide | 400+ |
 | `USER_GUIDE.md` | User guide | 700+ |
 | `INDEX.md` | This file | 500+ |
+| `NEW_FEATURES_INDEX.md` | New features index (v0.3.0) | 400+ |
+| `CLI_GUIDE.md` | CLI guide (v0.3.0) | 150+ |
+| `CODE_QUALITY_GUIDE.md` | Code quality guide (v0.3.0) | 200+ |
+| `PREDICTIVE_ANALYSIS_GUIDE.md` | Predictive analysis guide (v0.3.0) | 220+ |
+| `CODE_CHURN_GUIDE.md` | Code churn guide (v0.3.0) | 200+ |
+| `INTEGRATIONS_GUIDE.md` | Integrations guide (v0.3.0) | 250+ |
 
 ### Examples Directory (examples/)
 | File | Description | Lines |
@@ -269,17 +291,24 @@ Complete documentation index for CallFlow Tracer.
 ## 📊 Statistics
 
 ### Documentation Coverage
-- **Total Documentation Files**: 15+
-- **Total Lines of Documentation**: 6000+
+- **Total Documentation Files**: 21+ (including 6 new v0.3.0 guides)
+- **Total Lines of Documentation**: 7000+ (including 1000+ new)
 - **Total Examples**: 30+
 - **Total Tests**: 39+
 - **Code Coverage**: High
 
 ### Package Statistics
-- **Total Modules**: 7
-- **Total Functions**: 50+
-- **Total Classes**: 5+
-- **Lines of Code**: 3000+
+- **Total Modules**: 12 (including 9 new in v0.3.0)
+- **Total Functions**: 100+ (including 50+ new)
+- **Total Classes**: 25+ (including 20+ new)
+- **Lines of Code**: 6000+ (including 3200+ new)
+
+### v0.3.0 New Features
+- **New Modules**: 9 (1 CLI + 1 Quality + 1 Predictive + 1 Churn + 5 Integrations)
+- **New Classes**: 20+
+- **New Functions**: 50+
+- **New Lines of Code**: 3200+
+- **New Documentation**: 1000+ lines across 6 guides
 
 ---
 
@@ -289,7 +318,8 @@ Complete documentation index for CallFlow Tracer.
 1. **[README.md](../README.md)** - Start here!
 2. **[USER_GUIDE.md](USER_GUIDE.md)** - Complete usage guide
 3. **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - API reference
-4. **[ENHANCED_FEATURES.md](../ENHANCED_FEATURES.md)** - New features
+4. **[ENHANCED_FEATURES.md](../ENHANCED_FEATURES.md)** - Enhanced features
+5. **[NEW_FEATURES_INDEX.md](NEW_FEATURES_INDEX.md)** - New v0.3.0 features
 
 ### Most Useful Examples
 1. **[flamegraph_enhanced_demo.py](../examples/flamegraph_enhanced_demo.py)** - All features
@@ -527,11 +557,11 @@ python examples/flamegraph_enhanced_demo.py
 
 CallFlow Tracer includes:
 
-- **15+ Documentation Files** covering all aspects
+- **21+ Documentation Files** covering all aspects (including 6 new v0.3.0 guides)
 - **30+ Examples** demonstrating features
 - **39+ Tests** ensuring quality
-- **7 Modules** with complete functionality
-- **6000+ Lines** of documentation
+- **12 Modules** with complete functionality (including 9 new in v0.3.0)
+- **7000+ Lines** of documentation (including 1000+ new)
 
 Everything you need to:
 - ✅ Trace function calls
@@ -541,9 +571,35 @@ Everything you need to:
 - ✅ Use in Jupyter
 - ✅ Find bottlenecks
 - ✅ Optimize code
+- ✅ **Analyze code quality** (NEW)
+- ✅ **Predict performance issues** (NEW)
+- ✅ **Identify high-risk files** (NEW)
+- ✅ **Integrate with web frameworks** (NEW)
+- ✅ **Use command-line interface** (NEW)
 
 ---
 
-*Documentation Index - Last Updated: 2025-10-05*
+## 🆕 v0.3.0 New Features
 
-**Start with [README.md](../README.md) and explore from there!** 🚀
+### Major Additions
+1. **Command-Line Interface** - 10 CLI commands
+2. **Code Quality Analysis** - Complexity, maintainability, debt metrics
+3. **Predictive Analysis** - Performance prediction, capacity planning
+4. **Code Churn Analysis** - Git history analysis, hotspot identification
+5. **Framework Integrations** - Flask, FastAPI, Django, SQLAlchemy, psycopg2
+
+### New Documentation
+- [NEW_FEATURES_INDEX.md](NEW_FEATURES_INDEX.md) - Overview and index
+- [CLI_GUIDE.md](CLI_GUIDE.md) - CLI commands reference
+- [CODE_QUALITY_GUIDE.md](CODE_QUALITY_GUIDE.md) - Quality analysis guide
+- [PREDICTIVE_ANALYSIS_GUIDE.md](PREDICTIVE_ANALYSIS_GUIDE.md) - Predictions guide
+- [CODE_CHURN_GUIDE.md](CODE_CHURN_GUIDE.md) - Churn analysis guide
+- [INTEGRATIONS_GUIDE.md](INTEGRATIONS_GUIDE.md) - Framework integrations guide
+- [v0_3_0_RELEASE_NOTES.md](v0_3_0_RELEASE_NOTES.md) - Release notes
+- [FEATURE_MAPPING.md](FEATURE_MAPPING.md) - Feature mapping guide
+
+---
+
+*Documentation Index - Last Updated: 2025-01-15*
+
+**Start with [README.md](../README.md) or [NEW_FEATURES_INDEX.md](NEW_FEATURES_INDEX.md) to explore!** 🚀
