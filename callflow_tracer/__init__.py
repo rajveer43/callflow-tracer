@@ -15,7 +15,7 @@ Example usage:
         my_function()
 """
  
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
@@ -125,6 +125,18 @@ from .code_churn import (
     ChurnCorrelation
 )
 
+# Custom metrics tracking
+from .custom_metrics import (
+    custom_metric,
+    track_metric,
+    MetricsCollector,
+    MetricPoint,
+    MetricStats,
+    SLAMonitor,
+    BusinessMetricsTracker,
+    get_business_tracker
+)
+
 # Convenience function for one-liner usage
 def trace_and_export(output_file: str, include_args: bool = False):
     """
@@ -218,6 +230,16 @@ __all__ = [
     'generate_churn_report',
     'ChurnMetrics',
     'ChurnCorrelation',
+    
+    # Custom metrics tracking
+    'custom_metric',
+    'track_metric',
+    'MetricsCollector',
+    'MetricPoint',
+    'MetricStats',
+    'SLAMonitor',
+    'BusinessMetricsTracker',
+    'get_business_tracker',
     
     # Package metadata
     '__version__',

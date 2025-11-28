@@ -1,10 +1,10 @@
-# CallFlow Tracer v0.3.0 Release Notes
+# CallFlow Tracer v0.3.1 Release Notes
 
 Major release with comprehensive analysis, CLI, and framework integration features.
 
 ---
 
-## 🎉 What's New in v0.3.0
+## 🎉 What's New in v0.3.1
 
 ### Major Features
 
@@ -203,7 +203,7 @@ setup_flask_tracing(app)
 
 ## 🔄 Migration Guide
 
-### From v0.2.4 to v0.3.0
+### From v0.2.5 to v0.3.1
 
 No breaking changes! All existing code continues to work.
 
@@ -224,9 +224,9 @@ No breaking changes! All existing code continues to work.
 
 ## 📋 Feature Comparison
 
-### v0.2.4 vs v0.3.0
+### v0.2.5 vs v0.3.1
 
-| Feature | v0.2.4 | v0.3.0 |
+| Feature | v0.2.5 | v0.3.1 |
 |---------|--------|--------|
 | Function Tracing | ✅ | ✅ |
 | Call Graph Visualization | ✅ | ✅ |
@@ -356,15 +356,9 @@ None at this time. All features tested and working.
 
 ---
 
-## 🙏 Acknowledgments
-
-Thanks to all contributors and users who provided feedback and suggestions for v0.3.0!
-
----
-
 ## 📝 Changelog
 
-### v0.3.0 (2025-01-15)
+### v0.3.1 (2025-01-15)
 
 #### Added
 - ✅ Command-line interface (CLI) with 10 commands
@@ -381,7 +375,7 @@ Thanks to all contributors and users who provided feedback and suggestions for v
 - ✅ Comprehensive examples
 
 #### Fixed
-- ✅ All known issues from v0.2.4
+- ✅ All known issues from v0.2.5
 
 ---
 

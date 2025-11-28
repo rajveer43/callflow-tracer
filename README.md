@@ -56,6 +56,15 @@
 - **Framework Integration**: Insert integration code snippets
 - **CLI Help**: Interactive help for all commands
 
+### **📊 Custom Metrics Tracking (NEW!)**
+- **@custom_metric Decorator**: Automatic function execution tracking
+- **Business Logic Metrics**: Track custom business events and counters
+- **SLA Monitoring**: Monitor Service Level Agreement compliance
+- **Performance Metrics**: Execution time, call frequency, memory usage
+- **Metrics Export**: JSON and CSV export formats
+- **Compliance Reporting**: Detailed SLA violation reports
+- **Tag-Based Filtering**: Filter and organize metrics by tags
+
 ---
 
 ## 🎉 What's New in v0.2.5 (2025-10-24)
@@ -862,6 +871,85 @@ with trace_scope("postgres_trace.html"):
 
 ---
 
+## 📊 Custom Metrics Tracking (NEW in v0.3.1)
+
+Track business logic metrics, monitor SLA compliance, and export performance data:
+
+### Basic Usage with Decorator
+
+```python
+from callflow_tracer import custom_metric, track_metric, MetricsCollector
+
+# Automatic metric tracking with decorator
+@custom_metric("order_processing_time", sla_threshold=1.0)
+def process_order(order_id, amount):
+    # Your business logic here
+    return {"status": "completed", "amount": amount}
+
+# Manual metric tracking
+def calculate_total(items):
+    total = sum(item['price'] * item['quantity'] for item in items)
+    track_metric("order_total", total, tags={"currency": "USD"})
+    return total
+
+# Run your code
+for i in range(10):
+    process_order(i, 99.99)
+
+# Export metrics
+MetricsCollector.export_metrics("metrics.json")
+```
+
+### SLA Monitoring
+
+```python
+from callflow_tracer import SLAMonitor
+
+sla_monitor = SLAMonitor()
+
+# Set SLA thresholds
+sla_monitor.set_threshold("api_response_time", 0.5)  # 500ms
+sla_monitor.set_threshold("database_query_time", 1.0)  # 1 second
+
+# Get compliance report
+report = sla_monitor.get_compliance_report()
+for metric_name, compliance in report.items():
+    print(f"{metric_name}: {compliance['compliance_rate']}% compliant")
+
+# Export report
+sla_monitor.export_report("sla_report.json")
+```
+
+### Business Metrics Tracking
+
+```python
+from callflow_tracer import get_business_tracker
+
+tracker = get_business_tracker()
+
+# Track counters
+tracker.increment_counter("orders_processed")
+tracker.increment_counter("orders_failed")
+
+# Track gauges
+tracker.set_gauge("current_queue_size", 42)
+tracker.set_gauge("success_rate", 98.5)
+
+# Export metrics
+tracker.export_metrics("business_metrics.json")
+```
+
+**What You Get:**
+- 📈 **Automatic Tracking**: @custom_metric decorator tracks execution time
+- 🎯 **SLA Monitoring**: Monitor compliance with service level agreements
+- 📊 **Business Metrics**: Track counters and gauges for business logic
+- 🏷️ **Tag-Based Filtering**: Organize metrics with tags
+- 📁 **Multiple Export Formats**: JSON and CSV export
+- 📋 **Compliance Reports**: Detailed SLA violation reports
+- 🔍 **Statistical Analysis**: Mean, median, min, max, stddev calculations
+
+---
+
 ## 📓 Jupyter Notebook Support
 
 ```python
@@ -1160,7 +1248,10 @@ callflow-tracer/
 
 ## 📚 Documentation
 
-### 🆕 v0.3.0 Documentation (NEW!)
+### 🆕 v0.3.1 Documentation (NEW!)
+- **[CUSTOM_METRICS_GUIDE.md](docs/CUSTOM_METRICS_GUIDE.md)** - Custom metrics tracking guide (NEW!)
+
+### 🆕 v0.3.0 Documentation
 - **[NEW_FEATURES_INDEX.md](docs/NEW_FEATURES_INDEX.md)** - Complete v0.3.0 feature index
 - **[CLI_GUIDE.md](docs/CLI_GUIDE.md)** - Command-line interface reference
 - **[CODE_QUALITY_GUIDE.md](docs/CODE_QUALITY_GUIDE.md)** - Code quality analysis guide
