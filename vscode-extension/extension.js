@@ -24,7 +24,13 @@ function activate(context) {
         vscode.commands.registerCommand('callflow-tracer.clearTrace', clearTrace),
         vscode.commands.registerCommand('callflow-tracer.exportPNG', exportPNG),
         vscode.commands.registerCommand('callflow-tracer.exportJSON', exportJSON),
-        vscode.commands.registerCommand('callflow-tracer.changeLayout', changeLayout)
+        vscode.commands.registerCommand('callflow-tracer.changeLayout', changeLayout),
+        vscode.commands.registerCommand('callflow-tracer.exportToOtel', exportToOtel),
+        vscode.commands.registerCommand('callflow-tracer.exportToOtelAdvanced', exportToOtelAdvanced),
+        vscode.commands.registerCommand('callflow-tracer.analyzeAnomalies', analyzeAnomalies),
+        vscode.commands.registerCommand('callflow-tracer.enableAutoInstrumentation', enableAutoInstrumentation),
+        vscode.commands.registerCommand('callflow-tracer.showPluginManager', showPluginManager),
+        vscode.commands.registerCommand('callflow-tracer.runCustomAnalyzer', runCustomAnalyzer)
     );
 
     // Register webview provider
@@ -780,6 +786,141 @@ async function exportJSON() {
         fs.writeFileSync(uri.fsPath, JSON.stringify(currentTraceData, null, 2));
         vscode.window.showInformationMessage('Trace data exported successfully');
     }
+}
+
+/**
+ * Export current trace to OpenTelemetry via CLI (basic mode)
+ */
+async function exportToOtel() {
+    if (!currentTraceData) {
+        vscode.window.showWarningMessage('No trace data to export. Run a trace first.');
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('callflowTracer');
+    const serviceName = config.get('otelServiceName', 'callflow-tracer');
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('No workspace folder found to write temporary trace file.');
+        return;
+    }
+
+    const tempDir = workspaceFolders[0].uri.fsPath;
+    const tempJsonPath = path.join(tempDir, '.callflow_trace_otel.json');
+
+    try {
+        fs.writeFileSync(tempJsonPath, JSON.stringify(currentTraceData, null, 2));
+    } catch (err) {
+        vscode.window.showErrorMessage(`Failed to write temporary trace file: ${err.message}`);
+        return;
+    }
+
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Exporting CallFlow trace to OpenTelemetry...',
+        cancellable: false
+    }, async () => {
+        try {
+            const command = `callflow-tracer export "${tempJsonPath}" --format otel --service-name "${serviceName}"`;
+            const { stdout, stderr } = await execAsync(command, { cwd: tempDir });
+
+            if (stderr && stderr.trim()) {
+                console.error('OTel export stderr:', stderr);
+            }
+
+            vscode.window.showInformationMessage('CallFlow trace exported to OpenTelemetry. Check your configured OTel backend.');
+        } catch (error) {
+            vscode.window.showErrorMessage(`OpenTelemetry export failed: ${error.message}`);
+        } finally {
+            try {
+                if (fs.existsSync(tempJsonPath)) {
+                    fs.unlinkSync(tempJsonPath);
+                }
+            } catch (cleanupErr) {
+                console.error('Failed to clean up temporary OTel trace file:', cleanupErr);
+            }
+        }
+    });
+}
+
+/**
+ * Export current trace to OpenTelemetry via advanced CLI (with config, sampling, exemplars)
+ */
+async function exportToOtelAdvanced() {
+    if (!currentTraceData) {
+        vscode.window.showWarningMessage('No trace data to export. Run a trace first.');
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('callflowTracer');
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('No workspace folder found.');
+        return;
+    }
+
+    const tempDir = workspaceFolders[0].uri.fsPath;
+    const tempJsonPath = path.join(tempDir, '.callflow_trace_otel.json');
+
+    // Prompt for advanced options
+    const serviceName = await vscode.window.showInputBox({
+        prompt: 'Service name',
+        value: config.get('otelServiceName', 'callflow-tracer')
+    });
+
+    if (!serviceName) return;
+
+    const environment = await vscode.window.showQuickPick(
+        ['production', 'staging', 'development'],
+        { placeHolder: 'Select environment' }
+    );
+
+    if (!environment) return;
+
+    const samplingRateStr = await vscode.window.showInputBox({
+        prompt: 'Sampling rate (0.0-1.0)',
+        value: '1.0'
+    });
+
+    const samplingRate = parseFloat(samplingRateStr || '1.0');
+
+    try {
+        fs.writeFileSync(tempJsonPath, JSON.stringify(currentTraceData, null, 2));
+    } catch (err) {
+        vscode.window.showErrorMessage(`Failed to write temporary trace file: ${err.message}`);
+        return;
+    }
+
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Exporting to OpenTelemetry (advanced)...',
+        cancellable: false
+    }, async () => {
+        try {
+            const command = `callflow-tracer otel "${tempJsonPath}" --service-name "${serviceName}" --environment "${environment}" --sampling-rate ${samplingRate}`;
+            const { stdout, stderr } = await execAsync(command, { cwd: tempDir });
+
+            if (stdout) {
+                console.log('OTel export output:', stdout);
+            }
+
+            vscode.window.showInformationMessage(
+                `OTel export complete: ${serviceName} (${environment}, sampling=${samplingRate})`
+            );
+        } catch (error) {
+            vscode.window.showErrorMessage(`Advanced OTel export failed: ${error.message}`);
+        } finally {
+            try {
+                if (fs.existsSync(tempJsonPath)) {
+                    fs.unlinkSync(tempJsonPath);
+                }
+            } catch (cleanupErr) {
+                console.error('Failed to clean up temporary trace file:', cleanupErr);
+            }
+        }
+    });
 }
 
 /**
@@ -1910,6 +2051,412 @@ function get3DWebviewContent(traceData, defaultLayout) {
     </script>
 </body>
 </html>`;
+}
+
+// Anomaly Detection Command
+async function analyzeAnomalies() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No file is currently open');
+        return;
+    }
+
+    try {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Analyzing anomalies...",
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0, message: "Running anomaly detection..." });
+            
+            // Create a Python script for anomaly detection
+            const script = `
+import sys
+sys.path.append('${path.dirname(editor.document.fileName)}')
+
+from callflow_tracer import trace_scope
+from callflow_tracer.anomaly_detection import get_anomaly_detector, generate_anomaly_report
+
+# Trace the current file
+with trace_scope() as graph:
+    # Execute the file to collect data
+    exec(open('${editor.document.fileName}').read())
+
+# Run anomaly detection
+detector = get_anomaly_detector()
+report = generate_anomaly_report(hours=24)
+
+# Save report
+import json
+with open('anomaly_report.json', 'w') as f:
+    json.dump(report, f, indent=2)
+
+print(f"Anomalies detected: {report['total_alerts']}")
+print(f"Severity breakdown: {report['severity_breakdown']}")
+`;
+
+            progress.report({ increment: 50, message: "Processing results..." });
+            
+            // Write and execute the script
+            const scriptPath = path.join(path.dirname(editor.document.fileName), 'anomaly_detection.py');
+            fs.writeFileSync(scriptPath, script);
+            
+            await execAsync(`cd "${path.dirname(editor.document.fileName)}" && python anomaly_detection.py`);
+            
+            progress.report({ increment: 100, message: "Complete!" });
+        });
+
+        // Show results
+        const reportPath = path.join(path.dirname(editor.document.fileName), 'anomaly_report.json');
+        if (fs.existsSync(reportPath)) {
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            
+            // Create a webview to show the report
+            const panel = vscode.window.createWebviewPanel(
+                'anomalyReport',
+                'Anomaly Detection Report',
+                vscode.ViewColumn.One,
+                {}
+            );
+            
+            panel.webview.html = getAnomalyReportHtml(report);
+        }
+        
+        vscode.window.showInformationMessage('Anomaly detection completed!');
+    } catch (error) {
+        vscode.window.showErrorMessage(`Anomaly detection failed: ${error.message}`);
+    }
+}
+
+// Auto-Instrumentation Command
+async function enableAutoInstrumentation() {
+    const options = ['HTTP (requests, httpx, aiohttp)', 'Redis', 'Boto3 (AWS)', 'All Libraries'];
+    const selected = await vscode.window.showQuickPick(options, {
+        placeHolder: 'Select libraries to auto-instrument'
+    });
+    
+    if (!selected) return;
+    
+    try {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Enabling auto-instrumentation...",
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0, message: "Setting up auto-instrumentation..." });
+            
+            let libraries = [];
+            if (selected.includes('HTTP')) libraries.push('http');
+            if (selected.includes('Redis')) libraries.push('redis');
+            if (selected.includes('Boto3')) libraries.push('boto3');
+            if (selected.includes('All')) libraries = ['http', 'redis', 'boto3'];
+            
+            // Create auto-instrumentation setup script
+            const script = `
+from callflow_tracer.auto_instrumentation import enable_auto_instrumentation
+
+# Enable auto-instrumentation for selected libraries
+enable_auto_instrumentation(${JSON.stringify(libraries)})
+
+print("Auto-instrumentation enabled for: ${libraries.join(', ')}")
+`;
+            
+            progress.report({ increment: 50, message: "Applying configuration..." });
+            
+            // Write the setup script
+            const setupPath = path.join(vscode.workspace.rootPath || '', 'auto_instrumentation_setup.py');
+            fs.writeFileSync(setupPath, script);
+            
+            progress.report({ increment: 100, message: "Complete!" });
+        });
+        
+        vscode.window.showInformationMessage(
+            `Auto-instrumentation enabled for ${selected}!\n\n` +
+            `Add this to your code:\n` +
+            `from callflow_tracer.auto_instrumentation import enable_auto_instrumentation\n` +
+            `enable_auto_instrumentation(${JSON.stringify(selected.includes('All') ? ['http', 'redis', 'boto3'] : 
+              (selected.includes('HTTP') ? ['http'] : []))})`
+        );
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to enable auto-instrumentation: ${error.message}`);
+    }
+}
+
+// Plugin Manager Command
+async function showPluginManager() {
+    const panel = vscode.window.createWebviewPanel(
+        'pluginManager',
+        'Plugin Manager',
+        vscode.ViewColumn.One,
+        {}
+    );
+    
+    try {
+        // Create a script to list plugins
+        const script = `
+from callflow_tracer.plugin_system import get_plugin_manager
+import json
+
+manager = get_plugin_manager()
+plugins = {
+    'analyzers': manager.list_analyzers(),
+    'exporters': manager.list_exporters(),
+    'ui_widgets': manager.list_ui_widgets(),
+    'plugin_info': manager.plugin_info
+}
+
+print(json.dumps(plugins, indent=2))
+`;
+        
+        const scriptPath = path.join(vscode.workspace.rootPath || '', 'plugin_list.py');
+        fs.writeFileSync(scriptPath, script);
+        
+        const { stdout } = await execAsync(`cd "${vscode.workspace.rootPath || ''}" && python plugin_list.py`);
+        const plugins = JSON.parse(stdout);
+        
+        panel.webview.html = getPluginManagerHtml(plugins);
+    } catch (error) {
+        panel.webview.html = `
+        <html>
+        <body>
+            <h2>Plugin Manager</h2>
+            <p>Error loading plugins: ${error.message}</p>
+        </body>
+        </html>
+        `;
+    }
+}
+
+// Custom Analyzer Command
+async function runCustomAnalyzer() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No file is currently open');
+        return;
+    }
+    
+    try {
+        // Get available analyzers
+        const script = `
+from callflow_tracer.plugin_system import get_plugin_manager
+import json
+
+manager = get_plugin_manager()
+analyzers = manager.list_analyzers()
+print(json.dumps(analyzers))
+`;
+        
+        const scriptPath = path.join(path.dirname(editor.document.fileName), 'list_analyzers.py');
+        fs.writeFileSync(scriptPath, script);
+        
+        const { stdout } = await execAsync(`cd "${path.dirname(editor.document.fileName)}" && python list_analyzers.py`);
+        const analyzers = JSON.parse(stdout);
+        
+        if (analyzers.length === 0) {
+            vscode.window.showInformationMessage('No custom analyzers available');
+            return;
+        }
+        
+        const selected = await vscode.window.showQuickPick(analyzers, {
+            placeHolder: 'Select an analyzer to run'
+        });
+        
+        if (!selected) return;
+        
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Running ${selected} analyzer...`,
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0, message: "Analyzing..." });
+            
+            const analysisScript = `
+import sys
+sys.path.append('${path.dirname(editor.document.fileName)}')
+
+from callflow_tracer import trace_scope
+from callflow_tracer.plugin_system import get_plugin_manager
+
+# Trace the current file
+with trace_scope() as graph:
+    exec(open('${editor.document.fileName}').read())
+
+# Run custom analyzer
+manager = get_plugin_manager()
+result = manager.run_analyzer('${selected}', graph)
+
+# Save results
+import json
+with open('analysis_result.json', 'w') as f:
+    json.dump(result, f, indent=2)
+
+print(f"Analysis completed: {len(result)} metrics generated")
+`;
+            
+            progress.report({ increment: 50, message: "Processing results..." });
+            
+            const analysisScriptPath = path.join(path.dirname(editor.document.fileName), 'run_analysis.py');
+            fs.writeFileSync(analysisScriptPath, analysisScript);
+            
+            await execAsync(`cd "${path.dirname(editor.document.fileName)}" && python run_analysis.py`);
+            
+            progress.report({ increment: 100, message: "Complete!" });
+        });
+        
+        // Show results
+        const resultPath = path.join(path.dirname(editor.document.fileName), 'analysis_result.json');
+        if (fs.existsSync(resultPath)) {
+            const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+            
+            // Create a webview to show results
+            const panel = vscode.window.createWebviewPanel(
+                'analysisResult',
+                `${selected} Analysis Results`,
+                vscode.ViewColumn.One,
+                {}
+            );
+            
+            panel.webview.html = getAnalysisResultHtml(selected, result);
+        }
+        
+        vscode.window.showInformationMessage(`${selected} analysis completed!`);
+    } catch (error) {
+        vscode.window.showErrorMessage(`Analysis failed: ${error.message}`);
+    }
+}
+
+// Helper functions for HTML generation
+function getAnomalyReportHtml(report) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Anomaly Detection Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+            .alert { padding: 10px; margin: 5px 0; border-radius: 5px; }
+            .critical { background: #ffebee; border-left: 4px solid #f44336; }
+            .high { background: #fff3e0; border-left: 4px solid #ff9800; }
+            .medium { background: #fff8e1; border-left: 4px solid #ffc107; }
+            .low { background: #e8f5e8; border-left: 4px solid #4caf50; }
+            .metric { font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🔍 Anomaly Detection Report</h1>
+            <p>Generated: ${new Date(report.report_generated).toLocaleString()}</p>
+            <p>Period: Last ${report.period_hours} hours</p>
+        </div>
+        
+        <h2>Summary</h2>
+        <p><strong>Total Alerts:</strong> ${report.total_alerts}</p>
+        <p><strong>Severity Breakdown:</strong></p>
+        <ul>
+            <li>Critical: ${report.severity_breakdown.critical || 0}</li>
+            <li>High: ${report.severity_breakdown.high || 0}</li>
+            <li>Medium: ${report.severity_breakdown.medium || 0}</li>
+            <li>Low: ${report.severity_breakdown.low || 0}</li>
+        </ul>
+        
+        <h2>Top Anomalies</h2>
+        ${report.top_anomalies.map(alert => `
+            <div class="alert ${alert.severity}">
+                <div class="metric">${alert.metric_name}</div>
+                <div>${alert.description}</div>
+                <small>Z-score: ${alert.z_score.toFixed(2)} | Time: ${new Date(alert.timestamp).toLocaleString()}</small>
+            </div>
+        `).join('')}
+    </body>
+    </html>`;
+}
+
+function getPluginManagerHtml(plugins) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Plugin Manager</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .section { margin: 20px 0; }
+            .plugin { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; }
+            .plugin-name { font-weight: bold; color: #333; }
+            .plugin-type { color: #666; font-size: 0.9em; }
+        </style>
+    </head>
+    <body>
+        <h1>🔌 Plugin Manager</h1>
+        
+        <div class="section">
+            <h2>📊 Analyzers (${plugins.analyzers.length})</h2>
+            ${plugins.analyzers.map(name => `
+                <div class="plugin">
+                    <div class="plugin-name">${name}</div>
+                    <div class="plugin-type">Custom Analyzer</div>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div class="section">
+            <h2>📤 Exporters (${plugins.exporters.length})</h2>
+            ${Object.entries(plugins.exporters).map(([name, extensions]) => `
+                <div class="plugin">
+                    <div class="plugin-name">${name}</div>
+                    <div class="plugin-type">Exports: ${extensions.join(', ')}</div>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div class="section">
+            <h2>🎨 UI Widgets (${plugins.ui_widgets.length})</h2>
+            ${plugins.ui_widgets.map(name => `
+                <div class="plugin">
+                    <div class="plugin-name">${name}</div>
+                    <div class="plugin-type">UI Widget</div>
+                </div>
+            `).join('')}
+        </div>
+    </body>
+    </html>`;
+}
+
+function getAnalysisResultHtml(analyzerName, result) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${analyzerName} Analysis Results</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+            .metric { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; }
+            .metric-name { font-weight: bold; color: #333; }
+            .metric-value { color: #666; font-size: 1.2em; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📈 ${analyzerName} Analysis Results</h1>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+        </div>
+        
+        <h2>Metrics</h2>
+        ${Object.entries(result).map(([key, value]) => `
+            <div class="metric">
+                <div class="metric-name">${key}</div>
+                <div class="metric-value">${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}</div>
+            </div>
+        `).join('')}
+    </body>
+    </html>`;
 }
 
 function deactivate() {}

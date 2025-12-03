@@ -1,6 +1,6 @@
 # CallFlow Tracer 🧠
 
-> **A comprehensive Python library for tracing, profiling, and visualizing function call flows with interactive graphs and call graphs. Perfect for understanding codeflow, debugging performance bottlenecks, and optimizing code.**
+> **A comprehensive Python library for tracing, profiling, and visualizing function call flows with interactive graphs, call graphs, and OpenTelemetry export. Perfect for understanding code flow, debugging performance bottlenecks, and optimizing code with production-ready observability.**
 
 [![PyPI version](https://badge.fury.io/py/callflow-tracer.svg)](https://badge.fury.io/py/callflow-tracer)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
@@ -8,17 +8,143 @@
 [![Downloads](https://pepy.tech/badge/callflow-tracer)](https://pepy.tech/project/callflow-tracer)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## 🎉 What's New in v0.3.1 (2025-11-02)
+## Features
 
-### **📊 Code Quality Analysis**
+### Advanced OpenTelemetry Export (Production Ready!)
+
+Export your traces to any OpenTelemetry-compatible backend with production-ready features:
+
+#### Quick Examples
+
+```python
+# Basic OTel export
+from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+
+with trace_scope() as graph:
+    your_code()
+
+result = export_callgraph_to_otel(
+    graph,
+    service_name="my-service",
+    sampling_rate=0.5,
+    environment="production"
+)
+print(f"Exported {result['span_count']} spans")
+
+# CLI usage
+callflow-tracer otel trace.json --service-name my-service --sampling-rate 0.5
+```
+
+#### Key Features
+
+- **Exemplars**: Link custom metrics to trace spans for correlation
+- **Sampling**: Configurable sampling rates (0.0-1.0) to reduce overhead
+- **Resource Attributes**: Attach metadata (version, environment, host)
+- **Config Files**: YAML/JSON configuration with auto-detection
+- **Environment Variables**: CALLFLOW_OTEL_* overrides for deployment
+- **Multiple Exporters**: Console, OTLP/gRPC, OTLP/HTTP, Jaeger
+- **Semantic Conventions**: OpenTelemetry standard attributes
+- **Batch Processing**: Configurable processor settings
+- **CLI Integration**: Dedicated `otel` subcommand with advanced options
+- **VS Code Integration**: Advanced export with interactive prompts
+- **Python API**: Direct function calls for programmatic use
+- **Comprehensive Tests**: 40+ unit tests + integration tests
+- **Full Documentation**: 1,500+ lines of guides and examples
+
+### Advanced SLA/SLO & Experiments
+
+Multi-dimensional SLAs with rolling windows and dynamic thresholds:
+
+```python
+from callflow_tracer.custom_metrics import (
+    SLO, SLI, ErrorBudgetTracker, ExperimentAnalyzer, track_metric
+)
+
+# Availability SLO (>= 99% success in last hour)
+slo = SLO(
+    name="checkout-availability",
+    objective=0.99,
+    time_window=3600,
+    sli_type="availability",
+    metric_name="checkout_success",  # 1=success, 0=failure
+)
+print(slo.compute(tags={"service": "api"}))
+
+# Error budget
+budget = ErrorBudgetTracker(slo).compute_budget(tags={"service": "api"})
+print(budget)
+
+# Canary comparison (baseline vs canary)
+report = ExperimentAnalyzer.canary(
+    metric_name="latency_ms",
+    baseline_value="baseline",
+    canary_value="canary",
+    group_tag_key="deployment",
+    time_window=1800,
+)
+print(report)
+```
+
+#### Key Features
+
+- **Multi-dimensional SLAs**: Multiple conditions per metric with operators (gt/lt/eq/gte/lte)
+- **Rolling Time Windows**: Compliance over configurable windows (e.g., 1m, 5m, 1h)
+- **Dynamic Thresholds**: Auto-adjust using IQR-based statistics (stdlib-only)
+- **SLI/SLO Framework**: Availability, error-rate, latency percentile targets
+- **Error Budgets**: Compute allowed error, consumed/remaining budget, burn rate
+- **Canary & A/B Analysis**: Compare baseline vs canary, or A vs B variants via tags with p95 and deltas
+
+### Code Quality Analysis
+
+Analyze code quality metrics with complexity analysis and technical debt scoring:
+
+```bash
+# Analyze code quality
+callflow-tracer quality . -o quality_report.html
+
+# Track trends over time
+callflow-tracer quality . --track-trends --format json
+```
+
+```python
+from callflow_tracer.code_quality import analyze_codebase
+
+results = analyze_codebase("./src")
+print(f"Average Complexity: {results['summary']['average_complexity']:.2f}")
+print(f"Critical Issues: {results['summary']['critical_issues']}")
+```
+
+#### Key Features
+
 - **Complexity Metrics**: Cyclomatic and cognitive complexity calculation
 - **Maintainability Index**: 0-100 scale with detailed metrics
-- **Halstead Metrics**: Volume, difficulty, and effort analysis
 - **Technical Debt Scoring**: Identify and quantify technical debt
 - **Quality Trends**: Track code quality over time
-- **HTML/JSON Reports**: Beautiful interactive reports
+- **Halstead Metrics**: Volume, difficulty, effort analysis
 
-### **🔮 Predictive Analysis**
+### Predictive Analysis
+
+Predict future performance issues and capacity planning:
+
+```bash
+# Predict performance issues
+callflow-tracer predict history.json -o predictions.html
+```
+
+```python
+from callflow_tracer.predictive_analysis import PerformancePredictor
+
+predictor = PerformancePredictor("history.json")
+predictions = predictor.predict_performance_issues(current_trace)
+
+for pred in predictions:
+    if pred.risk_level == "Critical":
+        print(f"CRITICAL: {pred.function_name}")
+        print(f"  Predicted time: {pred.predicted_time:.4f}s")
+```
+
+#### Key Features
+
 - **Performance Prediction**: Predict future performance degradation
 - **Capacity Planning**: Forecast when limits will be reached
 - **Scalability Analysis**: Assess code scalability characteristics
@@ -26,7 +152,27 @@
 - **Risk Assessment**: Multi-factor risk evaluation
 - **Confidence Scoring**: Data-driven confidence levels
 
-### **📈 Code Churn Analysis**
+### Code Churn Analysis
+
+Identify high-risk files using git history and quality correlation:
+
+```bash
+# Analyze code churn
+callflow-tracer churn . --days 90 -o churn_report.html
+```
+
+```python
+from callflow_tracer.code_churn import generate_churn_report
+
+report = generate_churn_report(".", days=90)
+print(f"High risk files: {report['summary']['high_risk_files']}")
+
+for hotspot in report['hotspots'][:5]:
+    print(f"{hotspot['file_path']}: {hotspot['hotspot_score']:.1f}")
+```
+
+#### Key Features
+
 - **Git History Analysis**: Analyze commits and changes
 - **Hotspot Identification**: Find high-risk files
 - **Churn Correlation**: Correlate with quality metrics
@@ -34,7 +180,12 @@
 - **Risk Assessment**: Comprehensive risk evaluation
 - **Actionable Recommendations**: Specific improvement suggestions
 
-### **🔌 Framework Integration Setup**
+### Framework Integration Setup
+
+Ready-to-use integrations for popular Python frameworks:
+
+#### Supported Frameworks
+
 - **Flask Integration**: Automatic request tracing
 - **FastAPI Integration**: Async endpoint tracing
 - **Django Integration**: View and middleware tracing
@@ -42,179 +193,11 @@
 - **psycopg2 Integration**: PostgreSQL query tracing
 - **Code Snippet Insertion**: Ready-to-use integration code
 
-### **🎯 Command-Line Interface (CLI)**
-- **10 CLI Commands**: Complete CLI for all features
-- **No Python Code Needed**: Run analysis from terminal
-- **HTML/JSON Output**: Multiple export formats
-- **Progress Notifications**: Real-time feedback
-- **Batch Processing**: Analyze entire projects
+### Command-Line Interface
 
-### **🔧 VS Code Extension Updates**
-- **Quality Analysis Command**: Analyze code quality from editor
-- **Performance Prediction**: Predict issues from current file
-- **Churn Analysis**: Analyze code changes with git history
-- **Framework Integration**: Insert integration code snippets
-- **CLI Help**: Interactive help for all commands
+Complete terminal interface for all features - no Python code needed:
 
-### **📊 Custom Metrics Tracking (NEW!)**
-- **@custom_metric Decorator**: Automatic function execution tracking
-- **Business Logic Metrics**: Track custom business events and counters
-- **SLA Monitoring**: Monitor Service Level Agreement compliance
-- **Performance Metrics**: Execution time, call frequency, memory usage
-- **Metrics Export**: JSON and CSV export formats
-- **Compliance Reporting**: Detailed SLA violation reports
-- **Tag-Based Filtering**: Filter and organize metrics by tags
-
----
-
-## 🎉 What's New in v0.2.5 (2025-10-24)
-
-### **🚀 Enhanced Framework Integrations**
-- **Modern FastAPI Example**: Production-ready patterns with Pydantic validation
-- **Lifespan Management**: Proper async startup/shutdown handling
-- **Error Handling**: Comprehensive HTTP exception handlers
-- **CORS Support**: Pre-configured middleware for cross-origin requests
-- **Multiple Endpoints**: CRUD operations, search, and calculator examples
-- **Request/Response Logging**: Automatic logging middleware
-- **OpenAPI Docs**: Enhanced interactive API documentation
-
-### **🔌 Framework Support**
-- **FastAPI**: Full async/await support with modern patterns
-- **Flask**: Automatic request tracing middleware
-- **Django**: View decorators and middleware integration
-- **SQLAlchemy**: Database query performance monitoring
-- **Psycopg2**: PostgreSQL query tracing
-
-### **🎨 VSCode Extension**
-- **Interactive Visualization**: View call graphs directly in VS Code
-- **Real-time Tracing**: Trace files with a single click
-- **3D Visualization**: Explore call graphs in 3D space
-- **Multiple Layouts**: Hierarchical, force-directed, circular, timeline
-- **Export Options**: PNG and JSON export from the editor
-- **Performance Profiling**: Built-in CPU profiling integration
-
-## 🎉 What's New in v0.2.4 (2025-10-06)
-
-### **⚡ NEW: Async/Await Support**
-- **@trace_async Decorator**: Trace async functions with full async/await support
-- **Async Context Manager**: `trace_scope_async()` for tracing async code blocks
-- **Concurrent Execution Tracking**: Visualize concurrent task execution patterns
-- **Async Statistics**: Track await time, active time, and concurrency levels
-- **gather_traced()**: Traced version of asyncio.gather for concurrent operations
-
-### **📊 NEW: Comparison Mode**
-- **Side-by-Side Comparison**: Compare two call graphs in split-screen HTML
-- **Before/After Analysis**: Perfect for optimization validation
-- **Diff Highlighting**: Automatic detection of improvements and regressions
-- **Performance Metrics**: Time saved, functions added/removed/modified
-- **Visual Indicators**: Color-coded improvements (green) and regressions (red)
-
-### **💾 NEW: Memory Leak Detection**
-- **Object Allocation Tracking**: Track every object allocation and deallocation
-- **Reference Counting**: Monitor reference counts and detect unreleased objects
-- **Memory Growth Patterns**: Identify continuous memory growth
-- **Leak Visualization**: Beautiful HTML reports with charts and metrics
-- **Reference Cycle Detection**: Find and visualize circular references
-- **Top Memory Consumers**: Identify which code uses the most memory
-
-### **🔥 Enhanced Flamegraph Visualization**
-- **Statistics Panel**: See total functions, calls, execution time, and bottlenecks at a glance
-- **5 Color Schemes**: Default, Hot, Cool, Rainbow, and **Performance** (Green=Fast, Red=Slow!)
-- **Search Functionality**: Find specific functions quickly in large graphs
-- **SVG Export**: Export high-quality vector graphics for presentations
-- **Modern UI**: Responsive design with gradients and smooth animations
-
-### **📊 Fixed CPU Profiling**
-- **Working cProfile Integration**: CPU profile now shows **actual execution times** (not 0.000s!)
-- **Accurate Call Counts**: Real function call statistics
-- **Hot Spot Identification**: Automatically identifies performance bottlenecks
-- **Complete Profile Data**: Full cProfile output with all metrics
-
-### **🎨 Enhanced Call Graph Visualization**
-- **Working Module Filter**: Filter by Python module with smooth animations (FIXED!)
-- **All Layouts Working**: Hierarchical, Force-Directed, Circular, Timeline (FIXED!)
-- **JSON Export**: Fixed export functionality with proper metadata (FIXED!)
-- **Modern CPU Profile UI**: Collapsible section with beautiful design
-
-### **📓 Jupyter Notebook Integration**
-- **Magic Commands**: `%%callflow_cell_trace` for quick tracing
-- **Inline Visualizations**: Display interactive graphs directly in notebooks
-- **Full Feature Support**: All features work seamlessly in Jupyter
-
-### **🐛 Critical Fixes**
-- ✅ Fixed tracer stability (programs now run to completion)
-- ✅ Fixed CPU profiling (shows actual times)
-- ✅ Fixed module filtering (now functional)
-- ✅ Fixed circular/timeline layouts (proper positioning)
-- ✅ Fixed JSON export (no more errors)
-
-## ✨ Key Features
-
-### 🎯 **Core Capabilities**
-- ✅ **Simple API**: Decorator or context manager - your choice
-- ✅ **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
-- ✅ **Async/Await Support**: Full support for modern async Python code
-- ✅ **Comparison Mode**: Side-by-side before/after optimization analysis
-- ✅ **Memory Leak Detection**: Track allocations, find leaks, visualize growth
-- ✅ **Performance Profiling**: CPU time, memory usage, I/O wait tracking
-- ✅ **Flamegraph Support**: Identify bottlenecks with flame graphs
-- ✅ **Call Graph Analysis**: Understand function relationships
-- ✅ **Jupyter Integration**: Works seamlessly in notebooks
-- ✅ **Multiple Export Formats**: HTML, JSON, SVG
-- ✅ **Zero Config**: Works out of the box
-
-### 📊 **Code Quality Analysis (NEW in v0.3.0)**
-- ✅ **Complexity Metrics**: Cyclomatic and cognitive complexity
-- ✅ **Maintainability Index**: 0-100 scale with detailed analysis
-- ✅ **Technical Debt Scoring**: Identify and quantify debt
-- ✅ **Quality Trends**: Track metrics over time
-- ✅ **Halstead Metrics**: Volume, difficulty, effort analysis
-
-### 🔮 **Predictive Analysis (NEW in v0.3.0)**
-- ✅ **Performance Prediction**: Predict future degradation
-- ✅ **Capacity Planning**: Forecast limit breaches
-- ✅ **Scalability Analysis**: Assess scalability characteristics
-- ✅ **Resource Forecasting**: Predict resource usage
-- ✅ **Risk Assessment**: Multi-factor evaluation
-
-### 📈 **Code Churn Analysis (NEW in v0.3.0)**
-- ✅ **Git History Analysis**: Analyze commits and changes
-- ✅ **Hotspot Identification**: Find high-risk files
-- ✅ **Quality Correlation**: Correlate with quality metrics
-- ✅ **Bug Prediction**: Estimate bug correlation
-- ✅ **Actionable Recommendations**: Specific improvements
-
-### 🎯 **Command-Line Interface (NEW in v0.3.0)**
-- ✅ **10 CLI Commands**: Complete terminal interface
-- ✅ **No Code Required**: Run analysis from command line
-- ✅ **Batch Processing**: Analyze entire projects
-- ✅ **Multiple Formats**: HTML and JSON output
-
-### 🔥 **Flamegraph Features**
-- 📊 **Statistics Dashboard**: Total time, calls, depth, slowest function
-- 🎨 **5 Color Schemes**: Choose the best view for your analysis
-- 🔍 **Real-time Search**: Find functions instantly
-- 💾 **SVG Export**: High-quality graphics for reports
-- ⚡ **Performance Colors**: Green=fast, Red=slow (perfect for optimization!)
-- 📱 **Responsive Design**: Works on all screen sizes
-
-### 📈 **Profiling Features**
-- 🔥 **CPU Profiling**: cProfile integration with detailed statistics
-- 💾 **Memory Tracking**: Current and peak memory usage
-- ⏱️ **I/O Wait Time**: Measure time spent waiting
-- 📊 **Health Indicators**: Visual performance status
-- 🎯 **Bottleneck Detection**: Automatically identifies slow functions
-
-### 🎨 **Visualization Features**
-- 🌐 **Interactive Network**: Zoom, pan, explore call relationships
-- 🎨 **Multiple Layouts**: Hierarchical, Force-Directed, Circular, Timeline
-- 🔍 **Module Filtering**: Focus on specific parts of your code
-- 📊 **Rich Tooltips**: Detailed metrics on hover
-- 🎯 **Color Coding**: Performance-based coloring
-
-## 🎯 New in v0.3.0: Quick Start with CLI
-
-### Command-Line Interface (No Python Code Needed!)
+#### Quick Start
 
 ```bash
 # Analyze code quality
@@ -231,9 +214,147 @@ callflow-tracer trace script.py -o trace.html
 
 # Generate flamegraph
 callflow-tracer flamegraph script.py -o flamegraph.html
+
+# Export to OpenTelemetry
+callflow-tracer otel trace.json --service-name my-service
 ```
 
-**All commands generate beautiful HTML reports!** 📊
+#### Key Features
+
+- **11 CLI Commands**: Complete CLI for all features
+- **No Python Code Needed**: Run analysis from terminal
+- **HTML/JSON Output**: Multiple export formats
+- **Progress Notifications**: Real-time feedback
+- **Batch Processing**: Analyze entire projects
+
+### Advanced Visualization Features
+
+#### Flamegraph Features
+
+- **Statistics Dashboard**: Total time, calls, depth, slowest function
+- **5 Color Schemes**: Choose the best view for your analysis
+- **Real-time Search**: Find functions instantly
+- **SVG Export**: High-quality graphics for reports
+- **Performance Colors**: Green=fast, Red=slow (perfect for optimization!)
+- **Responsive Design**: Works on all screen sizes
+
+#### Profiling Features
+
+- **CPU Profiling**: cProfile integration with detailed statistics
+- **Memory Tracking**: Current and peak memory usage
+- **I/O Wait Time**: Measure time spent waiting
+- **Health Indicators**: Visual performance status
+- **Bottleneck Detection**: Automatically identifies slow functions
+
+#### Visualization Features
+
+- **Interactive Network**: Zoom, pan, explore call relationships
+- **Multiple Layouts**: Hierarchical, Force-Directed, Circular, Timeline
+- **Module Filtering**: Focus on specific parts of your code
+- **Rich Tooltips**: Detailed metrics on hover
+- **Color Coding**: Performance-based coloring
+
+#### Enhanced Features
+
+- **Statistics Panel**: See total functions, calls, execution time, and bottlenecks at a glance
+- **Search Functionality**: Find specific functions quickly in large graphs
+- **SVG Export**: Export high-quality vector graphics for presentations
+- **Modern UI**: Responsive design with gradients and smooth animations
+- **Fixed CPU Profiling**: Working cProfile integration with actual execution times
+- **Working Module Filter**: Filter by Python module with smooth animations
+- **All Layouts Working**: Hierarchical, Force-Directed, Circular, Timeline
+- **JSON Export**: Fixed export functionality with proper metadata
+- **Jupyter Integration**: Magic commands and inline visualizations
+
+### Core Features
+
+#### Core Capabilities
+
+### **Core Capabilities**
+- **Simple API**: Decorator or context manager - your choice
+- **Interactive Visualizations**: Beautiful HTML graphs with zoom, pan, and filtering
+- **Async/Await Support**: Full support for modern async Python code
+- **Comparison Mode**: Side-by-side before/after optimization analysis
+- **Memory Leak Detection**: Track allocations, find leaks, visualize growth
+- **Performance Profiling**: CPU time, memory usage, I/O wait tracking
+- **Flamegraph Support**: Identify bottlenecks with flame graphs
+- **Call Graph Analysis**: Understand function relationships
+- **Jupyter Integration**: Works seamlessly in notebooks
+- **Multiple Export Formats**: HTML, JSON, SVG
+- **Zero Config**: Works out of the box
+
+### **OpenTelemetry Export**
+- **Production Ready**: Full OTel compliance
+- **Exemplars**: Link metrics to spans
+- **Sampling**: Reduce overhead in production
+- **Config Management**: YAML/JSON + environment variables
+- **Multiple Exporters**: Console, OTLP, Jaeger
+- **CLI Integration**: `callflow-tracer otel` command
+- **VS Code Integration**: Export from editor
+
+### **Code Quality Analysis**
+- **Complexity Metrics**: Cyclomatic and cognitive complexity
+- **Maintainability Index**: 0-100 scale with detailed analysis
+- **Technical Debt Scoring**: Identify and quantify debt
+- **Quality Trends**: Track metrics over time
+- **Halstead Metrics**: Volume, difficulty, effort analysis
+
+### **Predictive Analysis**
+- **Performance Prediction**: Predict future degradation
+- **Capacity Planning**: Forecast limit breaches
+- **Scalability Analysis**: Assess scalability characteristics
+- **Resource Forecasting**: Predict resource usage
+- **Risk Assessment**: Multi-factor evaluation
+
+### **Code Churn Analysis**
+- **Git History Analysis**: Analyze commits and changes
+- **Hotspot Identification**: Find high-risk files
+- **Quality Correlation**: Correlate with quality metrics
+- **Bug Prediction**: Estimate bug correlation
+- **Actionable Recommendations**: Specific improvements
+
+### **Command-Line Interface**
+- **11 CLI Commands**: Complete terminal interface (including `otel`)
+- **No Code Required**: Run analysis from command line
+- **Batch Processing**: Analyze entire projects
+- **Multiple Formats**: HTML and JSON output
+
+---
+
+## 🔥 Advanced Visualization Features
+
+### **Flamegraph Features**
+- **Statistics Dashboard**: Total time, calls, depth, slowest function
+- **5 Color Schemes**: Choose the best view for your analysis
+- **Real-time Search**: Find functions instantly
+- **SVG Export**: High-quality graphics for reports
+- **Performance Colors**: Green=fast, Red=slow (perfect for optimization!)
+- **Responsive Design**: Works on all screen sizes
+
+### **Profiling Features**
+- **CPU Profiling**: cProfile integration with detailed statistics
+- **Memory Tracking**: Current and peak memory usage
+- **I/O Wait Time**: Measure time spent waiting
+- **Health Indicators**: Visual performance status
+- **Bottleneck Detection**: Automatically identifies slow functions
+
+### **Visualization Features**
+- **Interactive Network**: Zoom, pan, explore call relationships
+- **Multiple Layouts**: Hierarchical, Force-Directed, Circular, Timeline
+- **Module Filtering**: Focus on specific parts of your code
+- **Rich Tooltips**: Detailed metrics on hover
+- **Color Coding**: Performance-based coloring
+
+### **Enhanced Features**
+- **Statistics Panel**: See total functions, calls, execution time, and bottlenecks at a glance
+- **Search Functionality**: Find specific functions quickly in large graphs
+- **SVG Export**: Export high-quality vector graphics for presentations
+- **Modern UI**: Responsive design with gradients and smooth animations
+- **Fixed CPU Profiling**: Working cProfile integration with actual execution times
+- **Working Module Filter**: Filter by Python module with smooth animations
+- **All Layouts Working**: Hierarchical, Force-Directed, Circular, Timeline
+- **JSON Export**: Fixed export functionality with proper metadata
+- **Jupyter Integration**: Magic commands and inline visualizations
 
 ---
 
@@ -243,7 +364,14 @@ callflow-tracer flamegraph script.py -o flamegraph.html
 
 #### From PyPI (Recommended)
 ```bash
+# Basic installation
 pip install callflow-tracer
+
+# With OpenTelemetry support
+pip install callflow-tracer[otel]
+
+# With all optional dependencies
+pip install callflow-tracer[all]
 ```
 
 #### From Source
@@ -251,6 +379,9 @@ pip install callflow-tracer
 git clone https://github.com/rajveer43/callflow-tracer.git
 cd callflow-tracer
 pip install -e .
+
+# With OpenTelemetry support
+pip install -e ".[otel]"
 ```
 
 #### For Development
@@ -258,12 +389,24 @@ pip install -e .
 pip install -e .[dev]
 ```
 
-#### VSCode Extension
-1. Open VS Code
-2. Go to Extensions (Ctrl+Shift+X)
-3. Search for "CallFlow Tracer"
-4. Click Install
-5. Right-click any Python file → "CallFlow: Trace Current File"
+#### OpenTelemetry Dependencies
+
+The OpenTelemetry export functionality requires additional packages. Install with:
+
+```bash
+pip install callflow-tracer[otel]
+```
+
+This includes:
+- `opentelemetry-api>=1.20.0` - Core OpenTelemetry API
+- `opentelemetry-sdk>=1.20.0` - OpenTelemetry SDK
+- `opentelemetry-exporter-otlp>=1.20.0` - OTLP exporter
+- `opentelemetry-exporter-jaeger>=1.20.0` - Jaeger exporter
+- `opentelemetry-exporter-prometheus>=1.20.0` - Prometheus exporter
+- `protobuf>=3.20.0` - Protocol buffers for OTLP
+- `grpcio>=1.50.0` - gRPC transport
+
+**Note**: OpenTelemetry support is optional. The core library works without these dependencies.
 
 ### Basic Usage
 
@@ -288,7 +431,78 @@ Open `fibonacci.html` in your browser to see the interactive visualization!
 
 ---
 
-## 📊 Code Quality Analysis (NEW in v0.3.0)
+## 🔥 OpenTelemetry Export
+
+Export your traces to any OpenTelemetry-compatible backend with production-ready features:
+
+### Quick Start
+
+```bash
+# Generate config file
+callflow-tracer otel --init-config
+
+# Export trace to OTel
+callflow-tracer otel trace.json --service-name my-service
+
+# Advanced export
+callflow-tracer otel trace.json \
+  --service-name my-service \
+  --environment production \
+  --sampling-rate 0.5 \
+  --include-metrics
+```
+
+### Configuration File
+
+**`.callflow_otel.yaml`** (auto-generated)
+```yaml
+service_name: my-service
+environment: production
+sampling_rate: 1.0
+
+exporter:
+  type: otlp_grpc
+  endpoint: http://localhost:4317
+
+resource_attributes:
+  service.version: "1.0.0"
+```
+
+### Python API
+
+```python
+from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+
+# Basic export
+result = export_callgraph_to_otel(graph, service_name="my-service")
+
+# Advanced export with exemplars
+result = export_callgraph_to_otel(
+    graph,
+    service_name="my-service",
+    sampling_rate=0.5,
+    environment="production",
+    resource_attributes={"service.version": "1.0.0"}
+)
+
+# With metrics bridging
+from callflow_tracer.opentelemetry_exporter import export_callgraph_with_metrics
+result = export_callgraph_with_metrics(graph, metrics, service_name="my-service")
+```
+
+**What You Get:**
+- **Production Ready**: Full OTel compliance with semantic conventions
+- **Exemplars**: Link custom metrics to trace spans for correlation
+- **Sampling**: Configurable sampling rates (0.0-1.0) to reduce overhead
+- **Resource Attributes**: Attach metadata (version, environment, host)
+- **Config Management**: YAML/JSON files with environment variable overrides
+- **Multiple Exporters**: Console, OTLP/gRPC, OTLP/HTTP, Jaeger
+- **Batch Processing**: Configurable processor settings for efficiency
+- **Error Handling**: Graceful degradation if OTel not installed
+
+---
+
+## 📊 Code Quality Analysis
 
 Analyze code quality metrics with a single command:
 
@@ -301,11 +515,11 @@ callflow-tracer quality . --track-trends --format json
 ```
 
 **What You Get:**
-- 📈 **Complexity Metrics**: Cyclomatic and cognitive complexity
-- 📊 **Maintainability Index**: 0-100 scale
-- 💾 **Technical Debt**: Quantified debt scoring
-- 🎯 **Halstead Metrics**: Volume, difficulty, effort
-- 📋 **Trend Analysis**: Track metrics over time
+- **Complexity Metrics**: Cyclomatic and cognitive complexity
+- **Maintainability Index**: 0-100 scale
+- **Technical Debt**: Quantified debt scoring
+- **Halstead Metrics**: Volume, difficulty, effort
+- **Trend Analysis**: Track metrics over time
 
 **Python API:**
 ```python
@@ -318,7 +532,7 @@ print(f"Critical Issues: {results['summary']['critical_issues']}")
 
 ---
 
-## 🔮 Predictive Analysis (NEW in v0.3.0)
+## 🔮 Predictive Analysis
 
 Predict future performance issues:
 
@@ -328,11 +542,11 @@ callflow-tracer predict history.json -o predictions.html
 ```
 
 **What You Get:**
-- 🎯 **Performance Prediction**: Predict degradation
-- 📈 **Capacity Planning**: Forecast limit breaches
-- 🔍 **Scalability Analysis**: Assess scalability
-- 💡 **Risk Assessment**: Multi-factor evaluation
-- 📊 **Confidence Scoring**: Data-driven confidence
+- **Performance Prediction**: Predict degradation
+- **Capacity Planning**: Forecast limit breaches
+- **Scalability Analysis**: Assess scalability
+- **Risk Assessment**: Multi-factor evaluation
+- **Confidence Scoring**: Data-driven confidence
 
 **Python API:**
 ```python
@@ -349,7 +563,7 @@ for pred in predictions:
 
 ---
 
-## 📈 Code Churn Analysis (NEW in v0.3.0)
+## 📈 Code Churn Analysis
 
 Identify high-risk files using git history:
 
@@ -359,11 +573,11 @@ callflow-tracer churn . --days 90 -o churn_report.html
 ```
 
 **What You Get:**
-- 🔥 **Hotspot Identification**: Find high-risk files
-- 📊 **Churn Metrics**: Commits, changes, authors
-- 🔗 **Quality Correlation**: Correlate with quality
-- 🐛 **Bug Prediction**: Estimate bug correlation
-- 💡 **Recommendations**: Actionable improvements
+- **Hotspot Identification**: Find high-risk files
+- **Churn Metrics**: Commits, changes, authors
+- **Quality Correlation**: Correlate with quality
+- **Bug Prediction**: Estimate bug correlation
+- **Recommendations**: Actionable improvements
 
 **Python API:**
 ```python
@@ -378,7 +592,7 @@ for hotspot in report['hotspots'][:5]:
 
 ---
 
-## 🔥 Flamegraph - Find Bottlenecks Fast!
+## Flamegraph - Find Bottlenecks Fast!
 
 ```python
 from callflow_tracer import trace_scope
@@ -409,11 +623,11 @@ generate_flamegraph(
 )
 ```
 
-**Open `flamegraph.html` and look for wide RED bars - those are your bottlenecks!** 🎯
+**Open `flamegraph.html` and look for wide RED bars - those are your bottlenecks!** 
 
 ---
 
-## ⚡ Async/Await Support - Trace Modern Python!
+## Async/Await Support - Trace Modern Python!
 
 CallFlow Tracer now fully supports async/await patterns:
 
@@ -453,14 +667,14 @@ asyncio.run(main())
 ```
 
 **Async Features:**
-- 🔄 **Concurrent Execution Tracking**: See which tasks run in parallel
-- ⏱️ **Await Time Analysis**: Separate active time from wait time
-- 📊 **Concurrency Metrics**: Max concurrent tasks, timeline events
-- 🎯 **gather_traced()**: Drop-in replacement for asyncio.gather with tracing
+- **Concurrent Execution Tracking**: See which tasks run in parallel
+- **Await Time Analysis**: Separate active time from wait time
+- **Concurrency Metrics**: Max concurrent tasks, timeline events
+- **gather_traced()**: Drop-in replacement for asyncio.gather with tracing
 
 ---
 
-## 📊 Comparison Mode - Validate Your Optimizations!
+## Comparison Mode - Validate Your Optimizations!
 
 Compare two versions of your code side-by-side:
 
@@ -503,67 +717,16 @@ export_comparison_html(
 ```
 
 **Open `optimization_comparison.html` to see:**
-- ✅ **Side-by-Side Graphs**: Visual comparison of call patterns
-- 📈 **Performance Metrics**: Time saved, percentage improvement
-- 🟢 **Improvements**: Functions that got faster (green highlighting)
-- 🔴 **Regressions**: Functions that got slower (red highlighting)
-- 📋 **Detailed Table**: Function-by-function comparison
-- 🎯 **Summary Stats**: Added/removed/modified functions
+- **Side-by-Side Graphs**: Visual comparison of call patterns
+- **Performance Metrics**: Time saved, percentage improvement
+- **Improvements**: Functions that got faster (green highlighting)
+- **Regressions**: Functions that got slower (red highlighting)
+- **Detailed Table**: Function-by-function comparison
+- **Summary Stats**: Added/removed/modified functions
 
 ---
 
-## 💾 Memory Leak Detection - Find and Fix Leaks!
-
-Detect memory leaks with comprehensive tracking and visualization:
-
-```python
-from callflow_tracer.memory_leak_detector import detect_leaks, track_allocations
-
-# Method 1: Context Manager
-with detect_leaks("leak_report.html") as detector:
-    # Your code here
-    data = []
-    for i in range(1000):
-        data.append([0] * 1000)  # Potential leak
-        detector.take_snapshot(f"Iteration_{i}")
-
-# Method 2: Decorator
-@track_allocations
-def process_data():
-    leaked_objects = []
-    for i in range(100):
-        leaked_objects.append([0] * 10000)
-    return leaked_objects
-
-result = process_data()
-```
-
-**Memory Leak Detection Features:**
-- 🔍 **Object Tracking**: Track every object allocation
-- 📊 **Growth Patterns**: Detect continuous memory growth
-- 🔄 **Reference Cycles**: Find circular references
-- 📈 **Memory Snapshots**: Compare memory state over time
-- 💡 **Top Consumers**: Identify memory-hungry code
-- 📋 **Beautiful Reports**: HTML visualization with charts
-
-**What You Get:**
-- Memory growth charts
-- Object type distribution
-- Suspected leak detection
-- Reference cycle identification
-- Snapshot comparisons
-- Actionable recommendations
-
-**Common Leak Scenarios Detected:**
-- ✅ Cache that never evicts entries
-- ✅ Event listeners never removed
-- ✅ Database connections not closed
-- ✅ Closures capturing large data
-- ✅ Reference cycles in objects
-
----
-
-## 📊 Complete Performance Analysis
+## Complete Performance Analysis
 
 Combine tracing and profiling for comprehensive analysis:
 
@@ -605,7 +768,7 @@ You get:
 
 ---
 
-## 🔌 Framework Integration Examples
+## Framework Integration Examples
 
 ### FastAPI Integration
 
@@ -828,7 +991,7 @@ with trace_scope("postgres_trace.html"):
 
 ---
 
-## 🎨 VSCode Extension Usage
+## VSCode Extension Usage
 
 ### Installation
 1. Open VS Code
@@ -871,7 +1034,7 @@ with trace_scope("postgres_trace.html"):
 
 ---
 
-## 📊 Custom Metrics Tracking (NEW in v0.3.1)
+## Custom Metrics Tracking (NEW in v0.3.1)
 
 Track business logic metrics, monitor SLA compliance, and export performance data:
 
@@ -947,6 +1110,85 @@ tracker.export_metrics("business_metrics.json")
 - 📁 **Multiple Export Formats**: JSON and CSV export
 - 📋 **Compliance Reports**: Detailed SLA violation reports
 - 🔍 **Statistical Analysis**: Mean, median, min, max, stddev calculations
+
+---
+
+## 🛡️ SLO/SLI, Error Budgets, and Experiments (NEW in v3.2.0)
+
+### Service Level Indicators (SLI) and Objectives (SLO)
+```python
+from callflow_tracer.custom_metrics import SLO
+
+# Latency objective: 95th percentile <= 300ms over 5 minutes
+latency_slo = SLO(
+    name="checkout-latency-p95<=300ms",
+    objective=1.0,  # 1.0 means target met
+    time_window=300,
+    sli_type="latency",
+    metric_name="latency_ms",
+    params={"threshold": 300.0, "percentile": 95.0},
+)
+print(latency_slo.compute(tags={"service": "api"}))
+```
+
+### Error Budgets
+```python
+from callflow_tracer.custom_metrics import ErrorBudgetTracker
+
+availability_slo = SLO(
+    name="availability>=99.9%",
+    objective=0.999,
+    time_window=86400,  # 1 day
+    sli_type="availability",
+    metric_name="request_success",
+    params={"success_value": 1.0},
+)
+eb = ErrorBudgetTracker(availability_slo).compute_budget(tags={"region": "us-east-1"})
+print(eb)
+```
+
+### Canary & A/B Testing
+```python
+from callflow_tracer.custom_metrics import ExperimentAnalyzer, track_metric
+
+# While generating metrics, tag them with deployment/variant
+track_metric("latency_ms", 240, tags={"deployment": "baseline"})
+track_metric("latency_ms", 260, tags={"deployment": "canary"})
+
+canary = ExperimentAnalyzer.canary(
+    metric_name="latency_ms",
+    baseline_value="baseline",
+    canary_value="canary",
+    group_tag_key="deployment",
+    time_window=3600,
+)
+print(canary)
+
+ab = ExperimentAnalyzer.ab_test(
+    metric_name="conversion_flag",  # 1.0=converted, 0.0=not
+    variant_a="A",
+    variant_b="B",
+    group_tag_key="variant",
+    time_window=7200,
+)
+print(ab)
+```
+
+### Multi-dimensional SLAs and Dynamic Thresholds
+```python
+from callflow_tracer.custom_metrics import SLAMonitor
+
+monitor = SLAMonitor()
+# Multiple conditions per metric with rolling windows and dynamic thresholds
+monitor.set_threshold("latency_ms", 300, operator="lte", time_window=300, dynamic=True)
+monitor.set_threshold("latency_ms", 500, operator="lte", time_window=60, dynamic=False)
+
+# Feed data
+monitor.record_metric("latency_ms", 350)
+monitor.record_metric("latency_ms", 240)
+
+print(monitor.get_compliance_report(time_window=3600))
+```
 
 ---
 
@@ -1248,6 +1490,14 @@ callflow-tracer/
 
 ## 📚 Documentation
 
+### 🆕 v0.3.2 Documentation (NEW!)
+- **[OTEL_QUICK_REFERENCE.md](OTEL_QUICK_REFERENCE.md)** - One-page OpenTelemetry cheat sheet
+- **[docs/OTEL_ADVANCED_GUIDE.md](docs/OTEL_ADVANCED_GUIDE.md)** - Comprehensive OpenTelemetry guide
+- **[OTEL_TESTING_GUIDE.md](OTEL_TESTING_GUIDE.md)** - Testing workflow and CI/CD
+- **[OTEL_IMPLEMENTATION_SUMMARY.md](OTEL_IMPLEMENTATION_SUMMARY.md)** - Feature overview
+- **[OTEL_INDEX.md](OTEL_INDEX.md)** - Master index & navigation
+- **[examples/README_OTEL.md](examples/README_OTEL.md)** - OpenTelemetry examples
+
 ### 🆕 v0.3.1 Documentation (NEW!)
 - **[CUSTOM_METRICS_GUIDE.md](docs/CUSTOM_METRICS_GUIDE.md)** - Custom metrics tracking guide (NEW!)
 
@@ -1279,12 +1529,15 @@ callflow-tracer/
 - `examples/flamegraph_enhanced_demo.py` - Enhanced features demo (12 examples)
 - `examples/jupyter_example.ipynb` - Interactive Jupyter notebook
 - `examples/jupyter_standalone_demo.py` - Standalone demos
+- `examples/example_otel_export.py` - OpenTelemetry export examples (NEW!)
 
 ### Tests
 - `tests/test_flamegraph.py` - 10 flamegraph tests
 - `tests/test_flamegraph_enhanced.py` - 10 enhanced feature tests
 - `tests/test_jupyter_integration.py` - 7 Jupyter tests
 - `tests/test_cprofile_fix.py` - CPU profiling tests
+- `tests/test_otel_export.py` - 40+ OpenTelemetry tests (NEW!)
+- `test_otel_integration.py` - OpenTelemetry integration tests (NEW!)
 
 ---
 
@@ -1302,6 +1555,10 @@ python tests/test_jupyter_integration.py
 
 # Test CPU profiling fix
 python tests/test_cprofile_fix.py
+
+# Test OpenTelemetry export (NEW in v0.3.2)
+pytest tests/test_otel_export.py -v
+python test_otel_integration.py
 ```
 
 ### Run Examples
@@ -1315,6 +1572,9 @@ python examples/flamegraph_enhanced_demo.py
 
 # Jupyter standalone demo (generates 5 HTML files)
 python examples/jupyter_standalone_demo.py
+
+# OpenTelemetry export examples (NEW in v0.3.2)
+python examples/example_otel_export.py
 ```
 
 All tests should pass with:

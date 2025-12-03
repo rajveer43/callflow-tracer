@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "callflow-tracer"
-version = "0.3.2"
-description = "A lightweight Python library for tracing function call relationships and visualizing them as interactive graphs"
+version = "0.3.3"
+description = "A lightweight Python library for tracing function call relationships and visualizing them as interactive graphs,  anomaly detection, and OpenTelemetry export for production observability"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
@@ -20,7 +20,10 @@ keywords = [
     "debugging",
     "call-graph",
     "visualization",
-    "performance"
+    "performance",
+    "observability",
+    "monitoring",
+    "metrics"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -44,6 +47,19 @@ dev = [
     "black",
     "flake8"
 ]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "opentelemetry-exporter-jaeger>=1.20.0",
+    "opentelemetry-exporter-prometheus>=1.20.0",
+    "protobuf>=3.20.0",
+    "grpcio>=1.50.0"
+]
+all = [
+    "callflow-tracer[dev,otel]"
+]
 
 [project.urls]
 Homepage = "https://github.com/rajveer43/callflow-tracer"
@@ -61,3 +77,6 @@ target-version = ["py38"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[project.scripts]
+callflow-tracer = "callflow_tracer.cli:main"

@@ -1,6 +1,6 @@
 # CallFlow Tracer
 
-Visualize Python function call flows with interactive graphs directly in VS Code.
+Visualize Python function call flows with interactive graphs and  function call tracing with anomaly detection, auto-instrumentation, and plugin system - all integrated directly in VS Code.
 
 ## Features
 
@@ -11,6 +11,15 @@ Visualize Python function call flows with interactive graphs directly in VS Code
 - **Export Options**: Export visualizations as PNG or JSON
 - **Module Filtering**: Filter call graphs by module for better clarity
 - **Flamegraph Support**: Visualize execution time with flamegraphs
+- **Anomaly Detection**: Baseline learning and drift alerts for performance metrics
+- **Auto-instrumentation**: Automatic tracing for HTTP, Redis, and Boto3 libraries  
+- **Plugin System**: Extensible architecture for custom analyzers, exporters, and UI widgets
+
+### 🔧 Improvements
+- Enhanced HTML export with anomaly detection reports
+- Integrated plugin system with built-in analyzers
+- Improved error handling and user feedback
+- Better integration with CallFlow Tracer Python library v0.3.2+
 
 ## Usage
 
@@ -29,6 +38,12 @@ Visualize Python function call flows with interactive graphs directly in VS Code
 - `CallFlow: Export as PNG` - Export visualization as image
 - `CallFlow: Export as JSON` - Export trace data as JSON
 
+### ✨ New Commands
+- `CallFlow: Analyze Anomalies` - Run anomaly detection on current file
+- `CallFlow: Enable Auto-instrumentation` - Setup automatic library tracing
+- `CallFlow: Show Plugin Manager` - View and manage installed plugins
+- `CallFlow: Run Custom Analyzer` - Execute custom analyzers on trace data
+
 ## Requirements
 
 - Python 3.7 or higher
@@ -40,6 +55,12 @@ Visualize Python function call flows with interactive graphs directly in VS Code
 - `callflowTracer.defaultLayout`: Default graph layout (default: "force")
 - `callflowTracer.autoTrace`: Automatically trace on file save (default: false)
 - `callflowTracer.enableProfiling`: Enable performance profiling (default: true)
+- `callflowTracer.anomalyThreshold`: Z-score threshold for anomaly detection (default: 2.0)
+- `callflowTracer.autoInstrumentation`: Enable auto-instrumentation for supported libraries (default: true)
+
+### 📦 Dependencies
+- Updated to work with CallFlow Tracer v0.3.2+
+- Enhanced integration with advanced features
 
 ## Known Issues
 
@@ -47,9 +68,9 @@ None at this time. Please report issues on GitHub.
 
 ## Release Notes
 
-### 1.0.0
+### 2.0.0
 
-Initial release of CallFlow Tracer
+Latest release of CallFlow Tracer
 
 ---
 

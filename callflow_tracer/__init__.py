@@ -15,7 +15,7 @@ Example usage:
         my_function()
 """
  
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
@@ -137,6 +137,59 @@ from .custom_metrics import (
     get_business_tracker
 )
 
+# OpenTelemetry export
+from .opentelemetry_exporter import (
+    export_callgraph_to_otel,
+    export_callgraph_with_metrics,
+    OpenTelemetryNotAvailable,
+    CallFlowExemplar,
+)
+
+from .otel_config import (
+    OTelConfig,
+    create_example_config,
+)
+
+# Anomaly detection
+from .anomaly_detection import (
+    get_anomaly_detector,
+    analyze_function_duration,
+    analyze_custom_metric,
+    generate_anomaly_report,
+    export_anomaly_report,
+    AnomalyDetector,
+    BaselineLearner,
+    AnomalyAlert,
+    BaselineStats,
+)
+
+# Auto-instrumentation
+from .auto_instrumentation import (
+    get_auto_instrumentation_manager,
+    enable_auto_instrumentation,
+    disable_auto_instrumentation,
+    auto_instrumentation,
+    AutoInstrumentationManager,
+    HTTPInstrumentor,
+    RedisInstrumentor,
+    Boto3Instrumentor,
+)
+
+# Plugin system
+from .plugin_system import (
+    get_plugin_manager,
+    register_analyzer,
+    register_exporter,
+    register_ui_widget,
+    register_hook,
+    PluginManager,
+    PluginHook,
+    AnalyzerHook,
+    ExporterHook,
+    UIWidgetHook,
+    PluginInfo,
+)
+
 # Convenience function for one-liner usage
 def trace_and_export(output_file: str, include_args: bool = False):
     """
@@ -240,6 +293,48 @@ __all__ = [
     'SLAMonitor',
     'BusinessMetricsTracker',
     'get_business_tracker',
+    
+    # OpenTelemetry export
+    'export_callgraph_to_otel',
+    'export_callgraph_with_metrics',
+    'OpenTelemetryNotAvailable',
+    'CallFlowExemplar',
+    'OTelConfig',
+    'create_example_config',
+    
+    # Anomaly detection
+    'get_anomaly_detector',
+    'analyze_function_duration',
+    'analyze_custom_metric',
+    'generate_anomaly_report',
+    'export_anomaly_report',
+    'AnomalyDetector',
+    'BaselineLearner',
+    'AnomalyAlert',
+    'BaselineStats',
+    
+    # Auto-instrumentation
+    'get_auto_instrumentation_manager',
+    'enable_auto_instrumentation',
+    'disable_auto_instrumentation',
+    'auto_instrumentation',
+    'AutoInstrumentationManager',
+    'HTTPInstrumentor',
+    'RedisInstrumentor',
+    'Boto3Instrumentor',
+    
+    # Plugin system
+    'get_plugin_manager',
+    'register_analyzer',
+    'register_exporter',
+    'register_ui_widget',
+    'register_hook',
+    'PluginManager',
+    'PluginHook',
+    'AnalyzerHook',
+    'ExporterHook',
+    'UIWidgetHook',
+    'PluginInfo',
     
     # Package metadata
     '__version__',
