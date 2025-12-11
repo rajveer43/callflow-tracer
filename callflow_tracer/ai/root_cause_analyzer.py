@@ -294,38 +294,32 @@ class RootCauseAnalyzer:
     
     def _get_llm_insights(self, root_causes: List[Dict], impact: Dict, 
                          nodes: Dict, issue_type: str) -> Optional[str]:
-        """Get LLM insights about root causes."""
+        """Get LLM insights about root causes with enhanced prompts."""
         if not self.provider:
             return None
+        
+        from .prompts import get_prompt_for_task
         
         # Prepare context
         context = self._prepare_llm_context(root_causes, impact, nodes, issue_type)
         
-        system_prompt = """You are an expert performance analyst helping developers debug their code.
-Analyze the root cause analysis results and provide actionable insights."""
-        
-        prompt = f"""Root Cause Analysis Results:
-
-Issue Type: {issue_type}
-
-Top Root Causes:
-{context['root_causes_text']}
-
-Impact Analysis:
-- Total affected functions: {impact['total_affected_functions']}
+        # Get enhanced prompt template
+        system_prompt, user_prompt = get_prompt_for_task(
+            'root_cause_analysis',
+            root_causes=context['root_causes_text'],
+            impact=f"""- Total affected functions: {impact['total_affected_functions']}
 - Total time impact: {impact['total_time_impact']:.3f}s
-- Impact percentage: {impact['impact_percentage']:.1f}%
-
-Please provide:
-1. A clear explanation of the root causes
-2. Why these are the primary issues
-3. Specific recommendations to fix each root cause
-4. Priority order for addressing these issues
-
-Be concise and actionable."""
+- Impact percentage: {impact['impact_percentage']:.1f}%""",
+            issue_type=issue_type
+        )
         
         try:
-            response = self.provider.generate(prompt, system_prompt, temperature=0.3)
+            response = self.provider.generate(
+                user_prompt, 
+                system_prompt, 
+                temperature=0.3,
+                max_tokens=1500
+            )
             return response
         except Exception as e:
             return f"LLM analysis failed: {str(e)}"

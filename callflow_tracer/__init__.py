@@ -207,6 +207,7 @@ def trace_and_export(output_file: str, include_args: bool = False):
     """
     return trace_scope(output_file, include_args)
 
+
 # Make the main functions available at package level
 __all__ = [
     # Core tracing functions

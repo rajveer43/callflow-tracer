@@ -313,30 +313,25 @@ class QueryEngine:
         return str(data)
     
     def _query_with_llm(self, graph: CallGraph, question: str) -> Dict[str, Any]:
-        """Use LLM to answer complex queries."""
+        """Use LLM to answer complex queries with enhanced prompts."""
+        from .prompts import get_prompt_for_task
+        
         # Prepare graph summary for LLM
         graph_summary = self._prepare_graph_summary(graph)
         
-        prompt = f"""You are analyzing a Python execution trace. Answer the following question based on the trace data.
-
-TRACE DATA:
-{graph_summary}
-
-QUESTION: {question}
-
-Provide a clear, concise answer. If the question asks for specific functions, list them with their key metrics.
-If the question is about patterns or insights, explain what you observe in the trace.
-"""
-        
-        system_prompt = """You are a performance analysis assistant. Answer questions about Python execution traces clearly and accurately.
-Focus on the most relevant information. Use bullet points for lists."""
+        # Get enhanced prompt template
+        system_prompt, user_prompt = get_prompt_for_task(
+            'performance_analysis',
+            graph_summary=graph_summary,
+            question=question
+        )
         
         try:
             answer = self.provider.generate(
-                prompt=prompt,
+                prompt=user_prompt,
                 system_prompt=system_prompt,
-                temperature=0.5,
-                max_tokens=800
+                temperature=0.3,  # Lower temperature for more focused analysis
+                max_tokens=1200
             )
             
             return {

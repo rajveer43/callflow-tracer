@@ -22,6 +22,7 @@ This module provides comprehensive intelligent analysis capabilities including:
 """
 
 from .llm_provider import LLMProvider, OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
+from .prompts import PromptTemplates, get_prompt_for_task
 from .summarizer import TraceSummarizer, summarize_trace
 from .query_engine import QueryEngine, query_trace
 from .root_cause_analyzer import RootCauseAnalyzer, analyze_root_cause
@@ -45,6 +46,13 @@ from .doc_generator import DocumentationGenerator, generate_documentation
 from .instrumentation_suggester import InstrumentationSuggester, suggest_instrumentation
 from .visual_debugger import VisualDebugger, create_visual_debugger
 
+# Advanced features (Phase 1-5)
+from .llm_router import LLMRouter, TaskComplexity, RoutingStrategy, ToolCallingExecutor, ContextManager
+from .advanced_reasoning import SelfCritique, ChainOfTools, OrgAwarePrompts, OrgProfile
+from .ai_config import AIConfig, TaskConfig, ConfigManager, create_default_config_file
+from .quality_and_safety import SafetyChecker, CostTracker, AuditLogger
+from .advanced_analysis import ComparativeAnalyzer, ArchitectureAdvisor, RefactoringAdvisor
+
 __all__ = [
     # Core LLM providers
     'LLMProvider',
@@ -52,6 +60,10 @@ __all__ = [
     'AnthropicProvider',
     'GeminiProvider',
     'OllamaProvider',
+    
+    # Enhanced prompts
+    'PromptTemplates',
+    'get_prompt_for_task',
     
     # Original AI features
     'TraceSummarizer',
@@ -122,4 +134,33 @@ __all__ = [
     # Visual debugging
     'VisualDebugger',
     'create_visual_debugger',
+    
+    # Advanced features - LLM Routing & Orchestration
+    'LLMRouter',
+    'TaskComplexity',
+    'RoutingStrategy',
+    'ToolCallingExecutor',
+    'ContextManager',
+    
+    # Advanced features - Reasoning
+    'SelfCritique',
+    'ChainOfTools',
+    'OrgAwarePrompts',
+    'OrgProfile',
+    
+    # Advanced features - Configuration
+    'AIConfig',
+    'TaskConfig',
+    'ConfigManager',
+    'create_default_config_file',
+    
+    # Advanced features - Quality & Safety
+    'SafetyChecker',
+    'CostTracker',
+    'AuditLogger',
+    
+    # Advanced features - Analysis
+    'ComparativeAnalyzer',
+    'ArchitectureAdvisor',
+    'RefactoringAdvisor',
 ]

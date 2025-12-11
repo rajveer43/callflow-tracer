@@ -27,7 +27,10 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import re
+import logging
 from .llm_provider import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -95,7 +98,9 @@ class AutoFixer:
     def _generate_fix_for_issue(self, issue: Dict[str, Any],
                                graph: Dict[str, Any],
                                source_code: Optional[Dict[str, str]]) -> Optional[CodeFix]:
-        """Generate a fix for a specific issue."""
+        """Generate a fix for a specific issue using LLM if available."""
+        from .prompts import get_prompt_for_task
+        
         issue_type = issue.get('type', 'unknown')
         function_name = issue.get('function', 'unknown')
         
@@ -106,7 +111,44 @@ class AutoFixer:
         if source_code and file_path in source_code:
             before_code = source_code[file_path]
         
-        # Generate fix based on issue type
+        # Try to generate fix using LLM first
+        if self.llm_provider:
+            try:
+                system_prompt, user_prompt = get_prompt_for_task(
+                    'code_fix',
+                    issue_type=issue_type,
+                    function_name=function_name,
+                    context=issue.get('description', ''),
+                    before_code=before_code
+                )
+                
+                response = self.llm_provider.generate(
+                    user_prompt,
+                    system_prompt,
+                    temperature=0.2,  # Low temperature for precise code generation
+                    max_tokens=2000
+                )
+                
+                # Parse LLM response and create CodeFix
+                # This is a simplified version - in production, parse the response more carefully
+                return CodeFix(
+                    file_path=file_path,
+                    function_name=function_name,
+                    issue=issue.get('description', 'Performance issue'),
+                    issue_type=issue_type,
+                    before_code=before_code,
+                    after_code=response,
+                    diff=self._generate_diff(before_code, response),
+                    explanation=f"LLM-generated fix for {issue_type}",
+                    confidence=0.75,
+                    severity='high',
+                    estimated_improvement=50.0
+                )
+            except Exception as e:
+                # Fall back to template-based fixes
+                logger.warning(f"LLM fix generation failed: {str(e)}, using template")
+        
+        # Fall back to template-based fixes
         if issue_type == 'n_plus_one':
             return self._fix_n_plus_one(issue, before_code)
         elif issue_type == 'inefficient_loop':
