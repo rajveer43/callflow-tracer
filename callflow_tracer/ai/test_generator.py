@@ -6,7 +6,7 @@ Supports pytest and unittest frameworks with timing assertions.
 
 Example:
     from callflow_tracer.ai import generate_performance_tests
-    
+
     tests = generate_performance_tests(
         graph,
         test_framework='pytest',
@@ -22,6 +22,7 @@ from datetime import datetime
 @dataclass
 class GeneratedTest:
     """A generated test."""
+
     test_name: str
     test_code: str
     framework: str  # 'pytest', 'unittest'
@@ -31,61 +32,67 @@ class GeneratedTest:
 
 class TestGenerator:
     """Generate performance tests from traces."""
-    
-    def __init__(self, test_framework: str = 'pytest'):
+
+    def __init__(self, test_framework: str = "pytest"):
         """
         Initialize test generator.
-        
+
         Args:
             test_framework: Test framework ('pytest' or 'unittest')
         """
         self.test_framework = test_framework
-    
-    def generate_tests(self, graph: Dict[str, Any],
-                      include_assertions: bool = True,
-                      include_load_tests: bool = False) -> List[Dict[str, Any]]:
+
+    def generate_tests(
+        self,
+        graph: Dict[str, Any],
+        include_assertions: bool = True,
+        include_load_tests: bool = False,
+    ) -> List[Dict[str, Any]]:
         """
         Generate tests from execution trace.
-        
+
         Args:
             graph: Execution trace graph
             include_assertions: Include timing assertions
             include_load_tests: Include load tests
-            
+
         Returns:
             List of generated tests
         """
         tests = []
-        
+
         # Extract test data from graph
         nodes = self._extract_nodes(graph)
         total_time = self._get_total_time(graph)
-        
+
         # Generate performance regression test
         perf_test = self._generate_performance_test(
             nodes, total_time, include_assertions
         )
         tests.append(perf_test)
-        
+
         # Generate integration test
         integration_test = self._generate_integration_test(nodes)
         tests.append(integration_test)
-        
+
         # Generate load test if requested
         if include_load_tests:
             load_test = self._generate_load_test(nodes, total_time)
             tests.append(load_test)
-        
+
         return [self._format_test(t) for t in tests]
-    
-    def _generate_performance_test(self, nodes: Dict[str, Dict[str, Any]],
-                                   total_time: float,
-                                   include_assertions: bool) -> GeneratedTest:
+
+    def _generate_performance_test(
+        self,
+        nodes: Dict[str, Dict[str, Any]],
+        total_time: float,
+        include_assertions: bool,
+    ) -> GeneratedTest:
         """Generate performance regression test."""
         test_name = "test_performance_regression"
-        
+
         # Build test code
-        if self.test_framework == 'pytest':
+        if self.test_framework == "pytest":
             test_code = self._generate_pytest_performance_test(
                 nodes, total_time, include_assertions
             )
@@ -93,20 +100,23 @@ class TestGenerator:
             test_code = self._generate_unittest_performance_test(
                 nodes, total_time, include_assertions
             )
-        
+
         assertions = self._extract_assertions(nodes, total_time)
-        
+
         return GeneratedTest(
             test_name=test_name,
             test_code=test_code,
             framework=self.test_framework,
             assertions=assertions,
-            test_type='performance'
+            test_type="performance",
         )
-    
-    def _generate_pytest_performance_test(self, nodes: Dict[str, Dict[str, Any]],
-                                         total_time: float,
-                                         include_assertions: bool) -> str:
+
+    def _generate_pytest_performance_test(
+        self,
+        nodes: Dict[str, Dict[str, Any]],
+        total_time: float,
+        include_assertions: bool,
+    ) -> str:
         """Generate pytest performance test."""
         code = f'''"""
 Auto-generated performance regression test.
@@ -127,27 +137,30 @@ def test_performance_regression():
     assert graph.total_time < {total_time * 1.1:.3f}, \\
         f"Performance regression: {{graph.total_time}} > {total_time * 1.1:.3f}s"
 '''
-        
+
         # Add function-level assertions
         if include_assertions:
             for node_key, node in list(nodes.items())[:5]:  # Top 5 functions
-                func_name = node.get('name', 'unknown')
-                func_time = node.get('total_time', 0)
-                
-                code += f'''
+                func_name = node.get("name", "unknown")
+                func_time = node.get("total_time", 0)
+
+                code += f"""
     
     # {func_name} should not exceed {func_time * 1.2:.3f}s
     node = graph.get_node('{func_name}')
     if node:
         assert node.total_time < {func_time * 1.2:.3f}, \\
             f"{{node.name}} regression: {{node.total_time}} > {func_time * 1.2:.3f}s"
-'''
-        
+"""
+
         return code
-    
-    def _generate_unittest_performance_test(self, nodes: Dict[str, Dict[str, Any]],
-                                           total_time: float,
-                                           include_assertions: bool) -> str:
+
+    def _generate_unittest_performance_test(
+        self,
+        nodes: Dict[str, Dict[str, Any]],
+        total_time: float,
+        include_assertions: bool,
+    ) -> str:
         """Generate unittest performance test."""
         code = f'''"""
 Auto-generated performance regression test.
@@ -173,14 +186,14 @@ class TestPerformanceRegression(unittest.TestCase):
             f"Performance regression: {{graph.total_time}} > {total_time * 1.1:.3f}s"
         )
 '''
-        
+
         # Add function-level tests
         if include_assertions:
             for i, (node_key, node) in enumerate(list(nodes.items())[:5]):
-                func_name = node.get('name', 'unknown')
-                func_time = node.get('total_time', 0)
+                func_name = node.get("name", "unknown")
+                func_time = node.get("total_time", 0)
                 test_method = f"test_{func_name.lower().replace(' ', '_')}"
-                
+
                 code += f'''
     
     def {test_method}(self):
@@ -197,20 +210,22 @@ class TestPerformanceRegression(unittest.TestCase):
             f"{{node.name}} regression: {{node.total_time}} > {func_time * 1.2:.3f}s"
         )
 '''
-        
-        code += '''
+
+        code += """
 
 if __name__ == '__main__':
     unittest.main()
-'''
-        
+"""
+
         return code
-    
-    def _generate_integration_test(self, nodes: Dict[str, Dict[str, Any]]) -> GeneratedTest:
+
+    def _generate_integration_test(
+        self, nodes: Dict[str, Dict[str, Any]]
+    ) -> GeneratedTest:
         """Generate integration test."""
         test_name = "test_integration"
-        
-        if self.test_framework == 'pytest':
+
+        if self.test_framework == "pytest":
             test_code = f'''"""
 Auto-generated integration test.
 Generated: {datetime.now().isoformat()}
@@ -256,21 +271,22 @@ class TestIntegration(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 '''
-        
+
         return GeneratedTest(
             test_name=test_name,
             test_code=test_code,
             framework=self.test_framework,
             assertions=["node_count > 0", "total_time > 0"],
-            test_type='integration'
+            test_type="integration",
         )
-    
-    def _generate_load_test(self, nodes: Dict[str, Dict[str, Any]],
-                           total_time: float) -> GeneratedTest:
+
+    def _generate_load_test(
+        self, nodes: Dict[str, Dict[str, Any]], total_time: float
+    ) -> GeneratedTest:
         """Generate load test."""
         test_name = "test_load"
-        
-        if self.test_framework == 'pytest':
+
+        if self.test_framework == "pytest":
             test_code = f'''"""
 Auto-generated load test.
 Generated: {datetime.now().isoformat()}
@@ -350,83 +366,90 @@ class TestLoad(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 '''
-        
+
         return GeneratedTest(
             test_name=test_name,
             test_code=test_code,
             framework=self.test_framework,
             assertions=[f"avg_time < {total_time * 1.5:.3f}"],
-            test_type='load'
+            test_type="load",
         )
-    
-    def _extract_assertions(self, nodes: Dict[str, Dict[str, Any]],
-                           total_time: float) -> List[str]:
+
+    def _extract_assertions(
+        self, nodes: Dict[str, Dict[str, Any]], total_time: float
+    ) -> List[str]:
         """Extract assertions from nodes."""
         assertions = [
             f"total_time < {total_time * 1.1:.3f}s",
             f"node_count > 0",
         ]
-        
+
         for node_key, node in list(nodes.items())[:3]:
-            func_name = node.get('name', 'unknown')
-            func_time = node.get('total_time', 0)
-            call_count = node.get('call_count', 0)
-            
+            func_name = node.get("name", "unknown")
+            func_time = node.get("total_time", 0)
+            call_count = node.get("call_count", 0)
+
             assertions.append(f"{func_name} < {func_time * 1.2:.3f}s")
             if call_count > 0:
                 assertions.append(f"{func_name} call_count <= {call_count}")
-        
+
         return assertions
-    
+
     def _format_test(self, test: GeneratedTest) -> Dict[str, Any]:
         """Format test for output."""
         return {
-            'test_name': test.test_name,
-            'test_code': test.test_code,
-            'framework': test.framework,
-            'assertions': test.assertions,
-            'test_type': test.test_type
+            "test_name": test.test_name,
+            "test_code": test.test_code,
+            "framework": test.framework,
+            "assertions": test.assertions,
+            "test_type": test.test_type,
         }
-    
+
     def _extract_nodes(self, graph: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """Extract nodes from graph."""
         nodes = {}
-        
+
         if isinstance(graph, dict):
-            if 'nodes' in graph:
-                for node in graph['nodes']:
-                    key = f"{node.get('module', 'unknown')}:{node.get('name', 'unknown')}"
+            if "nodes" in graph:
+                for node in graph["nodes"]:
+                    key = (
+                        f"{node.get('module', 'unknown')}:{node.get('name', 'unknown')}"
+                    )
                     nodes[key] = node
-            elif 'data' in graph and 'nodes' in graph['data']:
-                for node in graph['data']['nodes']:
-                    key = f"{node.get('module', 'unknown')}:{node.get('name', 'unknown')}"
+            elif "data" in graph and "nodes" in graph["data"]:
+                for node in graph["data"]["nodes"]:
+                    key = (
+                        f"{node.get('module', 'unknown')}:{node.get('name', 'unknown')}"
+                    )
                     nodes[key] = node
-        
+
         return nodes
-    
+
     def _get_total_time(self, graph: Dict[str, Any]) -> float:
         """Get total time from graph."""
         if isinstance(graph, dict):
-            if 'total_time' in graph:
-                return graph['total_time']
-            elif 'data' in graph and 'total_time' in graph['data']:
-                return graph['data']['total_time']
+            if "total_time" in graph:
+                return graph["total_time"]
+            elif "data" in graph and "total_time" in graph["data"]:
+                return graph["data"]["total_time"]
         return 0.0
 
 
-def generate_performance_tests(graph: Dict[str, Any],
-                              test_framework: str = 'pytest',
-                              include_assertions: bool = True,
-                              include_load_tests: bool = False) -> List[Dict[str, Any]]:
+def generate_performance_tests(
+    graph: Dict[str, Any],
+    test_framework: str = "pytest",
+    include_assertions: bool = True,
+    include_load_tests: bool = False,
+) -> List[Dict[str, Any]]:
     """
     Generate performance tests from trace.
-    
+
     Args:
         graph: Execution trace graph
         test_framework: Test framework ('pytest' or 'unittest')
         include_assertions: Include timing assertions
         include_load_tests: Include load tests
-        
+
     Returns:
         List of generated tests
     """

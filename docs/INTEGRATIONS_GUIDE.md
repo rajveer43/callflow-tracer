@@ -382,7 +382,7 @@ def simple_operation():
 ### 4. Performance Monitoring
 ```python
 # Combine with predictive analysis
-from callflow_tracer.predictive_analysis import PerformancePredictor
+from callflow_tracer.analysis.predictive_analysis import PerformancePredictor
 
 setup_flask_tracing(app)
 predictor = PerformancePredictor("trace_history.json")

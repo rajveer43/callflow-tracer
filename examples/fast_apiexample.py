@@ -11,6 +11,7 @@ Then try:
     - http://127.0.0.1:8000/search?q=test
     - http://127.0.0.1:8000/calculate/10/plus/5
 """
+
 import os
 import sys
 import logging
@@ -44,6 +45,7 @@ fake_items_db: Dict[int, Dict] = {
     3: {"name": "Doodad", "price": 4.99, "in_stock": False},
 }
 
+
 # Pydantic models
 class Item(BaseModel):
     name: str = Field(..., min_length=3, max_length=50)
@@ -52,9 +54,11 @@ class Item(BaseModel):
     tags: List[str] = []
     image_url: Optional[HttpUrl] = None
 
+
 class ItemResponse(Item):
     id: int
     created_at: datetime
+
 
 # Application lifespan management
 @asynccontextmanager
@@ -64,13 +68,13 @@ async def lifespan(app: FastAPI):
     global _cft_scope
     _cft_scope = trace_scope("fastapi_trace.html")
     _cft_scope.__enter__()
-    
+
     # Add some sample data
     for item_id, item_data in fake_items_db.items():
         item_data["created_at"] = datetime.utcnow()
-    
+
     yield  # This is where the application runs
-    
+
     # Shutdown
     logger.info("Shutting down...")
     try:
@@ -78,11 +82,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error during trace scope cleanup: {e}")
 
+
 app = FastAPI(
     title="Callflow-Tracer FastAPI Example",
     description="Enhanced FastAPI example with callflow-tracer integration",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -97,17 +102,21 @@ app.add_middleware(
 # Setup callflow-tracing
 setup_fastapi_tracing(app)
 
+
 # Middleware for request/response logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"Request: {request.method} {request.url}")
     try:
         response = await call_next(request)
-        logger.info(f"Response: {response.status_code} for {request.method} {request.url}")
+        logger.info(
+            f"Response: {response.status_code} for {request.method} {request.url}"
+        )
         return response
     except Exception as e:
         logger.error(f"Error processing {request.url}: {str(e)}")
         raise
+
 
 # Error handlers
 @app.exception_handler(HTTPException)
@@ -117,10 +126,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"error": exc.detail},
     )
 
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow()}
+
 
 # Root endpoint
 @app.get("/", tags=["Root"])
@@ -132,14 +143,16 @@ async def read_root():
             "/items - List all items",
             "/items/{id} - Get item by ID",
             "/search?q=term - Search items",
-            "/calculate/{a}/{operation}/{b} - Simple calculator"
-        ]
+            "/calculate/{a}/{operation}/{b} - Simple calculator",
+        ],
     }
+
 
 # Get all items
 @app.get("/items", response_model=Dict[int, ItemResponse])
 async def list_items():
     return fake_items_db
+
 
 # Get item by ID
 @app.get(
@@ -147,16 +160,16 @@ async def list_items():
     response_model=ItemResponse,
     responses={
         404: {"description": "Item not found"},
-        200: {"description": "Item found", "model": ItemResponse}
-    }
+        200: {"description": "Item found", "model": ItemResponse},
+    },
 )
 async def get_item(item_id: int):
     if item_id not in fake_items_db:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Item {item_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Item {item_id} not found"
         )
     return {"id": item_id, **fake_items_db[item_id]}
+
 
 # Search items
 @app.get("/search")
@@ -168,6 +181,7 @@ async def search_items(q: str, limit: int = 10):
     ][:limit]
     return {"query": q, "results": results}
 
+
 # Simple calculator
 @app.get("/calculate/{a:float}/{operation}/{b:float}")
 async def calculate(a: float, operation: str, b: float):
@@ -177,38 +191,25 @@ async def calculate(a: float, operation: str, b: float):
         "times": a * b,
         "divided_by": a / b if b != 0 else None,
     }
-    
+
     if operation not in operations:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid operation. Use one of: {', '.join(operations.keys())}"
+            detail=f"Invalid operation. Use one of: {', '.join(operations.keys())}",
         )
-    
+
     if operation == "divided_by" and b == 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot divide by zero"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot divide by zero"
         )
-    
-    return {
-        "a": a,
-        "b": b,
-        "operation": operation,
-        "result": operations[operation]
-    }
+
+    return {"a": a, "b": b, "operation": operation, "result": operations[operation]}
+
 
 # Create new item
-@app.post(
-    "/items",
-    response_model=ItemResponse,
-    status_code=status.HTTP_201_CREATED
-)
+@app.post("/items", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_item(item: Item):
     new_id = max(fake_items_db.keys(), default=0) + 1
-    new_item = {
-        **item.dict(),
-        "id": new_id,
-        "created_at": datetime.utcnow()
-    }
+    new_item = {**item.dict(), "id": new_id, "created_at": datetime.utcnow()}
     fake_items_db[new_id] = new_item
     return new_item

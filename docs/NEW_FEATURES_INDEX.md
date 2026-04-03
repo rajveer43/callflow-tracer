@@ -223,16 +223,16 @@ callflow-tracer memory-leak script.py -o report.html
 
 ```python
 # Code Quality
-from callflow_tracer.code_quality import analyze_codebase
+from callflow_tracer.analysis.code_quality import analyze_codebase
 results = analyze_codebase("./src")
 
 # Predictive Analysis
-from callflow_tracer.predictive_analysis import PerformancePredictor
+from callflow_tracer.analysis.predictive_analysis import PerformancePredictor
 predictor = PerformancePredictor("history.json")
 predictions = predictor.predict_performance_issues(current_trace)
 
 # Code Churn
-from callflow_tracer.code_churn import generate_churn_report
+from callflow_tracer.analysis.code_churn import generate_churn_report
 report = generate_churn_report(".", days=90)
 
 # Framework Integration

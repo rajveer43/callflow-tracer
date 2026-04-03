@@ -59,7 +59,7 @@ def test_trace_capture():
     try:
         with trace_scope(None) as graph:
             result = test_func(3)
-        
+
         passed = graph is not None and len(graph.nodes) > 0
         print_test("Trace capture", passed, f"Captured {len(graph.nodes)} nodes")
         return graph
@@ -77,20 +77,15 @@ def test_otel_export(graph):
         return False
 
     try:
-        result = export_callgraph_to_otel(
-            graph,
-            service_name="test-service"
-        )
+        result = export_callgraph_to_otel(graph, service_name="test-service")
         passed = result["status"] == "success" and result["span_count"] > 0
-        print_test(
-            "OTel export",
-            passed,
-            f"Exported {result['span_count']} spans"
-        )
+        print_test("OTel export", passed, f"Exported {result['span_count']} spans")
         return passed
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test("OTel export", False, "OpenTelemetry SDK not installed (optional)")
+            print_test(
+                "OTel export", False, "OpenTelemetry SDK not installed (optional)"
+            )
         else:
             print_test("OTel export", False, str(e))
         return False
@@ -110,32 +105,27 @@ def test_exemplars(graph):
             span_id="test-span",
             value=0.123,
             metric_name="test_func",
-            attributes={"key": "value"}
+            attributes={"key": "value"},
         )
-        
-        passed = (
-            exemplar.trace_id == "test-trace" and
-            exemplar.value == 0.123
-        )
+
+        passed = exemplar.trace_id == "test-trace" and exemplar.value == 0.123
         print_test("Exemplar creation", passed)
 
         # Test exemplar linking
         result = export_callgraph_to_otel(
-            graph,
-            service_name="test-service",
-            exemplars=[exemplar]
+            graph, service_name="test-service", exemplars=[exemplar]
         )
-        
+
         passed = result["status"] == "success"
         print_test(
-            "Exemplar linking",
-            passed,
-            f"Linked {result['exemplar_count']} exemplars"
+            "Exemplar linking", passed, f"Linked {result['exemplar_count']} exemplars"
         )
         return passed
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test("Exemplar linking", False, "OpenTelemetry SDK not installed (optional)")
+            print_test(
+                "Exemplar linking", False, "OpenTelemetry SDK not installed (optional)"
+            )
         else:
             print_test("Exemplar linking", False, str(e))
         return False
@@ -151,17 +141,11 @@ def test_sampling(graph):
 
     try:
         result = export_callgraph_to_otel(
-            graph,
-            service_name="test-service",
-            sampling_rate=0.5
+            graph, service_name="test-service", sampling_rate=0.5
         )
-        
+
         passed = result["sampling_rate"] == 0.5
-        print_test(
-            "Sampling",
-            passed,
-            f"Sampling rate: {result['sampling_rate']}"
-        )
+        print_test("Sampling", passed, f"Sampling rate: {result['sampling_rate']}")
         return passed
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
@@ -210,21 +194,21 @@ def test_metrics_bridging(graph):
     try:
         metrics = MetricsCollector.get_metrics()
         result = export_callgraph_with_metrics(
-            graph,
-            metrics,
-            service_name="test-service"
+            graph, metrics, service_name="test-service"
         )
-        
+
         passed = result["status"] == "success"
         print_test(
             "Metrics bridging",
             passed,
-            f"Linked {result['exemplar_count']} metrics as exemplars"
+            f"Linked {result['exemplar_count']} metrics as exemplars",
         )
         return passed
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test("Metrics bridging", False, "OpenTelemetry SDK not installed (optional)")
+            print_test(
+                "Metrics bridging", False, "OpenTelemetry SDK not installed (optional)"
+            )
         else:
             print_test("Metrics bridging", False, str(e))
         return False
@@ -240,9 +224,9 @@ def test_cli():
             ["callflow-tracer", "otel", "--help"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
-        
+
         passed = result.returncode == 0
         print_test("CLI help", passed)
         return passed

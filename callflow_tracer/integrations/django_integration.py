@@ -1,10 +1,12 @@
 """Django integration for callflow-tracer."""
+
 from __future__ import annotations
 
 import time
 from typing import Optional, Callable, Any
 
 from ..tracer import CallGraph, get_current_graph
+
 try:
     from django.db import connection  # type: ignore
 except Exception:  # pragma: no cover - optional dependency

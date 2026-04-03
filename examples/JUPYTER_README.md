@@ -115,7 +115,7 @@ with trace_scope() as graph:
     result = complex_function()
 
 # Visualize the call graph inline
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 display_callgraph(graph.to_dict())
 ```
 
@@ -193,7 +193,7 @@ sys.path.insert(0, '/path/to/callflow-tracer')
 
 ### Custom Visualization Settings
 ```python
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 
 display_callgraph(
     graph.to_dict(),

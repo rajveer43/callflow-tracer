@@ -19,7 +19,7 @@ Trace async functions, track concurrent execution, and analyze async performance
 
 ```python
 import asyncio
-from callflow_tracer.async_tracer import trace_async, trace_scope_async
+from callflow_tracer.core.async_tracer import trace_async, trace_scope_async
 
 @trace_async
 async def my_async_function():
@@ -61,7 +61,7 @@ async with trace_scope_async("trace.html") as graph:
 Track concurrent task execution:
 
 ```python
-from callflow_tracer.async_tracer import gather_traced
+from callflow_tracer.core.async_tracer import gather_traced
 
 tasks = [fetch_data(i) for i in range(10)]
 results = await gather_traced(*tasks)
@@ -77,7 +77,7 @@ This tracks:
 Get detailed async performance metrics:
 
 ```python
-from callflow_tracer.async_tracer import get_async_stats
+from callflow_tracer.core.async_tracer import get_async_stats
 
 stats = get_async_stats(graph)
 print(f"Total async time: {stats['total_async_time']:.3f}s")
@@ -154,7 +154,7 @@ Compare two call graphs side-by-side to validate optimizations and detect regres
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.comparison import export_comparison_html
+from callflow_tracer.visualization.comparison import export_comparison_html
 
 # Trace "before" version
 with trace_scope() as graph_before:

@@ -109,7 +109,7 @@ Generate a split-screen HTML report highlighting improvements/regressions.
 
 **Example:**
 ```python
-from callflow_tracer.comparison import export_comparison_html
+from callflow_tracer.visualization.comparison import export_comparison_html
 export_comparison_html(before, after, "comparison.html", label1="Before", label2="After")
 ```
 
@@ -129,7 +129,7 @@ Context manager to run code while capturing memory snapshots and generating an o
 
 **Example:**
 ```python
-from callflow_tracer.memory_leak_detector import detect_leaks
+from callflow_tracer.performance.memory_leak_detector import detect_leaks
 with detect_leaks("leak_report.html") as detector:
     do_work()
     detector.take_snapshot("after_work")
@@ -345,7 +345,7 @@ Generate an interactive flamegraph visualization.
 **Example:**
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     my_function()
@@ -377,7 +377,7 @@ Initialize Jupyter notebook integration.
 
 **Example:**
 ```python
-from callflow_tracer.jupyter import init_jupyter
+from callflow_tracer.visualization.jupyter import init_jupyter
 
 init_jupyter()
 # Loads magic commands
@@ -398,7 +398,7 @@ Display an interactive call graph in a Jupyter notebook.
 **Example:**
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 
 with trace_scope() as graph:
     my_function()
@@ -545,7 +545,7 @@ from callflow_tracer import (
     export_html,
     export_json
 )
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 import time
 
 def slow_function():
@@ -715,7 +715,7 @@ generate_flamegraph(
 ```python
 # Old way
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     my_function()

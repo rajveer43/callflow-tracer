@@ -316,7 +316,7 @@ ERROR: Cannot install callflow-tracer due to conflicting dependencies
 
 **Solutions**:
 1. Install Jupyter: `pip install jupyter ipython`
-2. Initialize integration: `from callflow_tracer.jupyter import init_jupyter; init_jupyter()`
+2. Initialize integration: `from callflow_tracer.visualization.jupyter import init_jupyter; init_jupyter()`
 3. Restart Jupyter kernel
 4. Check IPython version: `ipython --version`
 
@@ -381,7 +381,7 @@ New features are opt-in:
 ```python
 # Old code (still works)
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     my_function()

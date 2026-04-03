@@ -6,19 +6,19 @@ Provides diffs and confidence scores for suggested fixes.
 
 Example:
     from callflow_tracer.ai import generate_fixes
-    
+
     fixes = generate_fixes(
         graph,
         root_cause_analysis=root_analysis,
         provider=OpenAIProvider(model='gpt-4o')
     )
-    
+
     for fix in fixes:
         print(f"File: {fix['file']}")
         print(f"Issue: {fix['issue']}")
         print(f"Confidence: {fix['confidence']}")
         print(f"Diff:\\n{fix['diff']}")
-        
+
         if fix['confidence'] > 0.8:
             apply_fix(fix)
 """
@@ -33,6 +33,7 @@ from .llm_provider import LLMProvider
 @dataclass
 class CodeFix:
     """A suggested code fix."""
+
     file_path: str
     function_name: str
     issue: str
@@ -48,115 +49,124 @@ class CodeFix:
 
 class AutoFixer:
     """Generate automatic code fixes for performance issues."""
-    
+
     def __init__(self, llm_provider: LLMProvider):
         """
         Initialize auto fixer.
-        
+
         Args:
             llm_provider: LLM provider for generating fixes
         """
         self.llm_provider = llm_provider
-    
-    def generate_fixes(self, graph: Dict[str, Any],
-                      root_cause_analysis: Optional[Dict[str, Any]] = None,
-                      source_code: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+
+    def generate_fixes(
+        self,
+        graph: Dict[str, Any],
+        root_cause_analysis: Optional[Dict[str, Any]] = None,
+        source_code: Optional[Dict[str, str]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Generate code fixes for detected issues.
-        
+
         Args:
             graph: Execution trace graph
             root_cause_analysis: Root cause analysis results
             source_code: Optional dict mapping file paths to source code
-            
+
         Returns:
             List of suggested fixes
         """
         fixes = []
-        
+
         if not root_cause_analysis:
             return fixes
-        
-        issues = root_cause_analysis.get('issues', [])
-        
+
+        issues = root_cause_analysis.get("issues", [])
+
         for issue in issues:
             fix = self._generate_fix_for_issue(issue, graph, source_code)
             if fix:
                 fixes.append(asdict(fix))
-        
+
         # Sort by confidence and severity
         fixes.sort(
-            key=lambda x: (x['confidence'], x['severity'] != 'critical'),
-            reverse=True
+            key=lambda x: (x["confidence"], x["severity"] != "critical"), reverse=True
         )
-        
+
         return fixes
-    
-    def _generate_fix_for_issue(self, issue: Dict[str, Any],
-                               graph: Dict[str, Any],
-                               source_code: Optional[Dict[str, str]]) -> Optional[CodeFix]:
+
+    def _generate_fix_for_issue(
+        self,
+        issue: Dict[str, Any],
+        graph: Dict[str, Any],
+        source_code: Optional[Dict[str, str]],
+    ) -> Optional[CodeFix]:
         """Generate a fix for a specific issue."""
-        issue_type = issue.get('type', 'unknown')
-        function_name = issue.get('function', 'unknown')
-        
+        issue_type = issue.get("type", "unknown")
+        function_name = issue.get("function", "unknown")
+
         # Get source code if available
-        file_path = issue.get('file', 'unknown')
+        file_path = issue.get("file", "unknown")
         before_code = ""
-        
+
         if source_code and file_path in source_code:
             before_code = source_code[file_path]
-        
+
         # Generate fix based on issue type
-        if issue_type == 'n_plus_one':
+        if issue_type == "n_plus_one":
             return self._fix_n_plus_one(issue, before_code)
-        elif issue_type == 'inefficient_loop':
+        elif issue_type == "inefficient_loop":
             return self._fix_inefficient_loop(issue, before_code)
-        elif issue_type == 'memory_leak':
+        elif issue_type == "memory_leak":
             return self._fix_memory_leak(issue, before_code)
-        elif issue_type == 'excessive_recursion':
+        elif issue_type == "excessive_recursion":
             return self._fix_excessive_recursion(issue, before_code)
-        elif issue_type == 'missing_cache':
+        elif issue_type == "missing_cache":
             return self._fix_missing_cache(issue, before_code)
-        
+
         return None
-    
-    def _fix_n_plus_one(self, issue: Dict[str, Any], before_code: str) -> Optional[CodeFix]:
+
+    def _fix_n_plus_one(
+        self, issue: Dict[str, Any], before_code: str
+    ) -> Optional[CodeFix]:
         """Generate fix for N+1 query problem."""
-        function_name = issue.get('function', 'unknown')
-        
+        function_name = issue.get("function", "unknown")
+
         before = """# Before - N+1 query problem
 def get_user_orders(user_id):
     orders = []
     for order_id in get_order_ids(user_id):
         orders.append(get_order(order_id))  # N+1!
     return orders"""
-        
+
         after = """# After - Batched query
 def get_user_orders(user_id):
     order_ids = get_order_ids(user_id)
     return get_orders_batch(order_ids)  # Batched!"""
-        
+
         diff = self._generate_diff(before, after)
-        
+
         return CodeFix(
-            file_path=issue.get('file', 'unknown'),
+            file_path=issue.get("file", "unknown"),
             function_name=function_name,
             issue="N+1 Query Problem: Multiple individual queries in a loop",
-            issue_type='n_plus_one',
+            issue_type="n_plus_one",
             before_code=before,
             after_code=after,
             diff=diff,
             explanation="Replace individual queries in loop with batch query. "
-                       "This reduces database round trips from N+1 to 1.",
+            "This reduces database round trips from N+1 to 1.",
             confidence=0.95,
-            severity='high',
-            estimated_improvement=80.0  # 80% improvement
+            severity="high",
+            estimated_improvement=80.0,  # 80% improvement
         )
-    
-    def _fix_inefficient_loop(self, issue: Dict[str, Any], before_code: str) -> Optional[CodeFix]:
+
+    def _fix_inefficient_loop(
+        self, issue: Dict[str, Any], before_code: str
+    ) -> Optional[CodeFix]:
         """Generate fix for inefficient loops."""
-        function_name = issue.get('function', 'unknown')
-        
+        function_name = issue.get("function", "unknown")
+
         before = """# Before - Inefficient loop
 def process_items(items):
     result = []
@@ -165,7 +175,7 @@ def process_items(items):
             continue
         result.append(item)
     return result"""
-        
+
         after = """# After - Efficient loop with set
 def process_items(items):
     seen = set()
@@ -176,28 +186,30 @@ def process_items(items):
         seen.add(item)
         result.append(item)
     return result"""
-        
+
         diff = self._generate_diff(before, after)
-        
+
         return CodeFix(
-            file_path=issue.get('file', 'unknown'),
+            file_path=issue.get("file", "unknown"),
             function_name=function_name,
             issue="Inefficient Loop: Using list search instead of set lookup",
-            issue_type='inefficient_loop',
+            issue_type="inefficient_loop",
             before_code=before,
             after_code=after,
             diff=diff,
             explanation="Use set for O(1) lookups instead of list O(n) search. "
-                       "Improves loop performance significantly.",
+            "Improves loop performance significantly.",
             confidence=0.90,
-            severity='high',
-            estimated_improvement=60.0
+            severity="high",
+            estimated_improvement=60.0,
         )
-    
-    def _fix_memory_leak(self, issue: Dict[str, Any], before_code: str) -> Optional[CodeFix]:
+
+    def _fix_memory_leak(
+        self, issue: Dict[str, Any], before_code: str
+    ) -> Optional[CodeFix]:
         """Generate fix for memory leaks."""
-        function_name = issue.get('function', 'unknown')
-        
+        function_name = issue.get("function", "unknown")
+
         before = """# Before - Memory leak
 class DataProcessor:
     def __init__(self):
@@ -206,7 +218,7 @@ class DataProcessor:
     def process(self, key, data):
         self.cache[key] = data  # Never cleared!
         return self.cache[key]"""
-        
+
         after = """# After - Fixed memory leak
 from functools import lru_cache
 
@@ -222,33 +234,35 @@ class DataProcessor:
             del self.cache[oldest_key]
         self.cache[key] = data
         return self.cache[key]"""
-        
+
         diff = self._generate_diff(before, after)
-        
+
         return CodeFix(
-            file_path=issue.get('file', 'unknown'),
+            file_path=issue.get("file", "unknown"),
             function_name=function_name,
             issue="Memory Leak: Unbounded cache growth",
-            issue_type='memory_leak',
+            issue_type="memory_leak",
             before_code=before,
             after_code=after,
             diff=diff,
             explanation="Add cache size limit and eviction policy to prevent unbounded memory growth.",
             confidence=0.85,
-            severity='critical',
-            estimated_improvement=100.0  # Prevents crash
+            severity="critical",
+            estimated_improvement=100.0,  # Prevents crash
         )
-    
-    def _fix_excessive_recursion(self, issue: Dict[str, Any], before_code: str) -> Optional[CodeFix]:
+
+    def _fix_excessive_recursion(
+        self, issue: Dict[str, Any], before_code: str
+    ) -> Optional[CodeFix]:
         """Generate fix for excessive recursion."""
-        function_name = issue.get('function', 'unknown')
-        
+        function_name = issue.get("function", "unknown")
+
         before = """# Before - Excessive recursion
 def fibonacci(n):
     if n <= 1:
         return n
     return fibonacci(n-1) + fibonacci(n-2)  # Exponential!"""
-        
+
         after = """# After - Memoized recursion
 from functools import lru_cache
 
@@ -257,33 +271,35 @@ def fibonacci(n):
     if n <= 1:
         return n
     return fibonacci(n-1) + fibonacci(n-2)  # Linear!"""
-        
+
         diff = self._generate_diff(before, after)
-        
+
         return CodeFix(
-            file_path=issue.get('file', 'unknown'),
+            file_path=issue.get("file", "unknown"),
             function_name=function_name,
             issue="Excessive Recursion: Exponential time complexity",
-            issue_type='excessive_recursion',
+            issue_type="excessive_recursion",
             before_code=before,
             after_code=after,
             diff=diff,
             explanation="Add memoization to cache recursive results. "
-                       "Reduces time complexity from exponential to linear.",
+            "Reduces time complexity from exponential to linear.",
             confidence=0.92,
-            severity='critical',
-            estimated_improvement=99.0
+            severity="critical",
+            estimated_improvement=99.0,
         )
-    
-    def _fix_missing_cache(self, issue: Dict[str, Any], before_code: str) -> Optional[CodeFix]:
+
+    def _fix_missing_cache(
+        self, issue: Dict[str, Any], before_code: str
+    ) -> Optional[CodeFix]:
         """Generate fix for missing caching."""
-        function_name = issue.get('function', 'unknown')
-        
+        function_name = issue.get("function", "unknown")
+
         before = """# Before - No caching
 def get_user_profile(user_id):
     # Expensive database query
     return database.query(f"SELECT * FROM users WHERE id={user_id}")"""
-        
+
         after = """# After - With caching
 from functools import lru_cache
 
@@ -291,61 +307,64 @@ from functools import lru_cache
 def get_user_profile(user_id):
     # Expensive database query
     return database.query(f"SELECT * FROM users WHERE id={user_id}")"""
-        
+
         diff = self._generate_diff(before, after)
-        
+
         return CodeFix(
-            file_path=issue.get('file', 'unknown'),
+            file_path=issue.get("file", "unknown"),
             function_name=function_name,
             issue="Missing Cache: Repeated expensive operations",
-            issue_type='missing_cache',
+            issue_type="missing_cache",
             before_code=before,
             after_code=after,
             diff=diff,
             explanation="Add caching for expensive operations to avoid repeated computation.",
             confidence=0.88,
-            severity='high',
-            estimated_improvement=70.0
+            severity="high",
+            estimated_improvement=70.0,
         )
-    
+
     def _generate_diff(self, before: str, after: str) -> str:
         """Generate a unified diff between before and after code."""
-        before_lines = before.split('\n')
-        after_lines = after.split('\n')
-        
+        before_lines = before.split("\n")
+        after_lines = after.split("\n")
+
         diff_lines = []
         diff_lines.append("--- before")
         diff_lines.append("+++ after")
-        
+
         for i, (b, a) in enumerate(zip(before_lines, after_lines)):
             if b != a:
                 diff_lines.append(f"- {b}")
                 diff_lines.append(f"+ {a}")
             else:
                 diff_lines.append(f"  {b}")
-        
-        return '\n'.join(diff_lines)
+
+        return "\n".join(diff_lines)
 
 
-def generate_fixes(graph: Dict[str, Any],
-                  root_cause_analysis: Optional[Dict[str, Any]] = None,
-                  provider: Optional[LLMProvider] = None,
-                  source_code: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+def generate_fixes(
+    graph: Dict[str, Any],
+    root_cause_analysis: Optional[Dict[str, Any]] = None,
+    provider: Optional[LLMProvider] = None,
+    source_code: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
     """
     Generate code fixes for detected issues.
-    
+
     Args:
         graph: Execution trace graph
         root_cause_analysis: Root cause analysis results
         provider: LLM provider for generating fixes
         source_code: Optional source code mapping
-        
+
     Returns:
         List of suggested fixes
     """
     if not provider:
         from .llm_provider import OpenAIProvider
+
         provider = OpenAIProvider()
-    
+
     fixer = AutoFixer(provider)
     return fixer.generate_fixes(graph, root_cause_analysis, source_code)

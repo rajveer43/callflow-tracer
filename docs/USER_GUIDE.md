@@ -193,7 +193,7 @@ export_html(
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     my_application()
@@ -304,7 +304,7 @@ export_html(graph, "timeline.html", layout="timeline")
 ```python
 # In Jupyter notebook
 from callflow_tracer import trace_scope, profile_section
-from callflow_tracer.jupyter import display_callgraph, init_jupyter
+from callflow_tracer.visualization.jupyter import display_callgraph, init_jupyter
 
 # Initialize (optional)
 init_jupyter()
@@ -451,7 +451,7 @@ export_json(graph, "data.json")
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 # 1. Trace your code
 with trace_scope() as graph:
@@ -474,7 +474,7 @@ generate_flamegraph(
 
 ```python
 from callflow_tracer import trace_scope, profile_section, export_html
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 # 1. Trace and profile
 with profile_section("Analysis") as perf_stats:
@@ -531,7 +531,7 @@ generate_flamegraph(after, "after.html", color_scheme="performance")
 ```python
 # In Jupyter notebook
 from callflow_tracer import trace_scope, profile_section
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 
 # 1. Run with profiling
 with profile_section("Experiment") as stats:
@@ -749,7 +749,7 @@ for node in graph.nodes.values():
 ```python
 import datetime
 from callflow_tracer import trace_scope, profile_section, export_html
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 # Run analysis
 with profile_section("Daily Report") as stats:
@@ -791,10 +791,10 @@ from callflow_tracer import profile_function, profile_section, get_memory_usage
 from callflow_tracer import export_html, export_json
 
 # Flamegraph
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 # Jupyter
-from callflow_tracer.jupyter import display_callgraph, init_jupyter
+from callflow_tracer.visualization.jupyter import display_callgraph, init_jupyter
 ```
 
 ### Common Patterns

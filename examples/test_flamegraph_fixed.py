@@ -16,21 +16,30 @@ REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from callflow_tracer import trace, trace_scope, get_current_graph, export_html, generate_flamegraph
+from callflow_tracer import (
+    trace,
+    trace_scope,
+    get_current_graph,
+    export_html,
+    generate_flamegraph,
+)
+
 
 @trace
 def factorial(n):
     if n == 0:
         return 1
     else:
-        return n * factorial(n-1)
+        return n * factorial(n - 1)
+
 
 @trace
 def fibonacci(n):
     if n <= 1:
         return n
     else:
-        return fibonacci(n-1) + fibonacci(n-2)
+        return fibonacci(n - 1) + fibonacci(n - 2)
+
 
 @trace
 def generate_data(n: int = 100):
@@ -48,6 +57,7 @@ def generate_data(n: int = 100):
         data.append((x, y, z, a, b, c))
     return data
 
+
 @trace
 def process_data(data):
     """
@@ -56,8 +66,15 @@ def process_data(data):
     result = 0
     for item in data:
         x, y, z, a, b, c = item
-        result += factorial(x) + fibonacci(y) + math.sin(z) * math.cos(z) + a * b + c * math.sqrt(z)
+        result += (
+            factorial(x)
+            + fibonacci(y)
+            + math.sin(z) * math.cos(z)
+            + a * b
+            + c * math.sqrt(z)
+        )
     return result
+
 
 @trace
 def main_example():
@@ -69,6 +86,7 @@ def main_example():
     print("Processing data...")
     result = process_data(data)
     print(f"Result: {result:.4f}")
+
 
 if __name__ == "__main__":
     print("Running Complex Flamegraph Example")
@@ -82,6 +100,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"ERROR in main execution: {e}")
         import traceback
+
         traceback.print_exc()
-    
+
     print("Example completed!")

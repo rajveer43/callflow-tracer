@@ -115,7 +115,7 @@ Create homepage in `/docs/index.md`:
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 # Trace your code
 with trace_scope() as graph:

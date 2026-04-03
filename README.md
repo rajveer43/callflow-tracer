@@ -18,7 +18,7 @@ Export your traces to any OpenTelemetry-compatible backend with production-ready
 
 ```python
 # Basic OTel export
-from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_to_otel
 
 with trace_scope() as graph:
     your_code()
@@ -56,7 +56,7 @@ callflow-tracer otel trace.json --service-name my-service --sampling-rate 0.5
 Multi-dimensional SLAs with rolling windows and dynamic thresholds:
 
 ```python
-from callflow_tracer.custom_metrics import (
+from callflow_tracer.observability.custom_metrics import (
     SLO, SLI, ErrorBudgetTracker, ExperimentAnalyzer, track_metric
 )
 
@@ -107,7 +107,7 @@ callflow-tracer quality . --track-trends --format json
 ```
 
 ```python
-from callflow_tracer.code_quality import analyze_codebase
+from callflow_tracer.analysis.code_quality import analyze_codebase
 
 results = analyze_codebase("./src")
 print(f"Average Complexity: {results['summary']['average_complexity']:.2f}")
@@ -132,7 +132,7 @@ callflow-tracer predict history.json -o predictions.html
 ```
 
 ```python
-from callflow_tracer.predictive_analysis import PerformancePredictor
+from callflow_tracer.analysis.predictive_analysis import PerformancePredictor
 
 predictor = PerformancePredictor("history.json")
 predictions = predictor.predict_performance_issues(current_trace)
@@ -162,7 +162,7 @@ callflow-tracer churn . --days 90 -o churn_report.html
 ```
 
 ```python
-from callflow_tracer.code_churn import generate_churn_report
+from callflow_tracer.analysis.code_churn import generate_churn_report
 
 report = generate_churn_report(".", days=90)
 print(f"High risk files: {report['summary']['high_risk_files']}")
@@ -471,7 +471,7 @@ resource_attributes:
 ### Python API
 
 ```python
-from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_to_otel
 
 # Basic export
 result = export_callgraph_to_otel(graph, service_name="my-service")
@@ -486,7 +486,7 @@ result = export_callgraph_to_otel(
 )
 
 # With metrics bridging
-from callflow_tracer.opentelemetry_exporter import export_callgraph_with_metrics
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_with_metrics
 result = export_callgraph_with_metrics(graph, metrics, service_name="my-service")
 ```
 
@@ -523,7 +523,7 @@ callflow-tracer quality . --track-trends --format json
 
 **Python API:**
 ```python
-from callflow_tracer.code_quality import analyze_codebase
+from callflow_tracer.analysis.code_quality import analyze_codebase
 
 results = analyze_codebase("./src")
 print(f"Average Complexity: {results['summary']['average_complexity']:.2f}")
@@ -550,7 +550,7 @@ callflow-tracer predict history.json -o predictions.html
 
 **Python API:**
 ```python
-from callflow_tracer.predictive_analysis import PerformancePredictor
+from callflow_tracer.analysis.predictive_analysis import PerformancePredictor
 
 predictor = PerformancePredictor("history.json")
 predictions = predictor.predict_performance_issues(current_trace)
@@ -581,7 +581,7 @@ callflow-tracer churn . --days 90 -o churn_report.html
 
 **Python API:**
 ```python
-from callflow_tracer.code_churn import generate_churn_report
+from callflow_tracer.analysis.code_churn import generate_churn_report
 
 report = generate_churn_report(".", days=90)
 print(f"High risk files: {report['summary']['high_risk_files']}")
@@ -596,7 +596,7 @@ for hotspot in report['hotspots'][:5]:
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 import time
 
 def slow_function():
@@ -633,7 +633,7 @@ CallFlow Tracer now fully supports async/await patterns:
 
 ```python
 import asyncio
-from callflow_tracer.async_tracer import trace_async, trace_scope_async, gather_traced
+from callflow_tracer.core.async_tracer import trace_async, trace_scope_async, gather_traced
 
 @trace_async
 async def fetch_data(item_id: int):
@@ -657,7 +657,7 @@ async def main():
         print(f"Processed {len(results)} items concurrently")
     
     # Get async statistics
-    from callflow_tracer.async_tracer import get_async_stats
+    from callflow_tracer.core.async_tracer import get_async_stats
     stats = get_async_stats(graph)
     print(f"Max concurrent tasks: {stats['max_concurrent_tasks']}")
     print(f"Efficiency: {stats['efficiency']:.2f}%")
@@ -680,7 +680,7 @@ Compare two versions of your code side-by-side:
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.comparison import export_comparison_html
+from callflow_tracer.visualization.comparison import export_comparison_html
 
 # Before optimization
 def fibonacci_slow(n):
@@ -732,7 +732,7 @@ Combine tracing and profiling for comprehensive analysis:
 
 ```python
 from callflow_tracer import trace_scope, profile_section, export_html
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 def application():
     # Your application code
@@ -1117,7 +1117,7 @@ tracker.export_metrics("business_metrics.json")
 
 ### Service Level Indicators (SLI) and Objectives (SLO)
 ```python
-from callflow_tracer.custom_metrics import SLO
+from callflow_tracer.observability.custom_metrics import SLO
 
 # Latency objective: 95th percentile <= 300ms over 5 minutes
 latency_slo = SLO(
@@ -1133,7 +1133,7 @@ print(latency_slo.compute(tags={"service": "api"}))
 
 ### Error Budgets
 ```python
-from callflow_tracer.custom_metrics import ErrorBudgetTracker
+from callflow_tracer.observability.custom_metrics import ErrorBudgetTracker
 
 availability_slo = SLO(
     name="availability>=99.9%",
@@ -1149,7 +1149,7 @@ print(eb)
 
 ### Canary & A/B Testing
 ```python
-from callflow_tracer.custom_metrics import ExperimentAnalyzer, track_metric
+from callflow_tracer.observability.custom_metrics import ExperimentAnalyzer, track_metric
 
 # While generating metrics, tag them with deployment/variant
 track_metric("latency_ms", 240, tags={"deployment": "baseline"})
@@ -1176,7 +1176,7 @@ print(ab)
 
 ### Multi-dimensional SLAs and Dynamic Thresholds
 ```python
-from callflow_tracer.custom_metrics import SLAMonitor
+from callflow_tracer.observability.custom_metrics import SLAMonitor
 
 monitor = SLAMonitor()
 # Multiple conditions per metric with rolling windows and dynamic thresholds
@@ -1197,7 +1197,7 @@ print(monitor.get_compliance_report(time_window=3600))
 ```python
 # In Jupyter notebook
 from callflow_tracer import trace_scope, profile_section
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 
 def my_function():
     return sum(range(1000))
@@ -1695,7 +1695,7 @@ If you find CallFlow Tracer useful, please star the repository on GitHub! ⭐
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     your_amazing_code()

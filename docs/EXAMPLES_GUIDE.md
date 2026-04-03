@@ -431,7 +431,7 @@ python examples/new_examplew.py
 
 #### Features:
 ```python
-from callflow_tracer.async_tracer import AsyncTracer
+from callflow_tracer.core.async_tracer import AsyncTracer
 
 tracer = AsyncTracer()
 tracer.start()
@@ -831,7 +831,7 @@ print(f"Regressions: {len(result['regressions'])}")
 
 ### 3. Analyze Performance:
 ```python
-from callflow_tracer.code_quality import CodeQualityAnalyzer
+from callflow_tracer.analysis.code_quality import CodeQualityAnalyzer
 
 analyzer = CodeQualityAnalyzer()
 report = analyzer.analyze(graph)

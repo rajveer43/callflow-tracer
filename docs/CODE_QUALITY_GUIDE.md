@@ -123,7 +123,7 @@ Tracks quality metrics over time.
 
 ### Analyze Single File
 ```python
-from callflow_tracer.code_quality import ComplexityAnalyzer
+from callflow_tracer.analysis.code_quality import ComplexityAnalyzer
 
 analyzer = ComplexityAnalyzer()
 metrics = analyzer.analyze_file("my_module.py")
@@ -134,7 +134,7 @@ for metric in metrics:
 
 ### Analyze Entire Codebase
 ```python
-from callflow_tracer.code_quality import analyze_codebase
+from callflow_tracer.analysis.code_quality import analyze_codebase
 
 results = analyze_codebase("./src")
 print(f"Average Complexity: {results['summary']['average_complexity']:.2f}")
@@ -143,7 +143,7 @@ print(f"Critical Issues: {results['summary']['critical_issues']}")
 
 ### Track Quality Trends
 ```python
-from callflow_tracer.code_quality import QualityTrendAnalyzer
+from callflow_tracer.analysis.code_quality import QualityTrendAnalyzer
 
 trend_analyzer = QualityTrendAnalyzer()
 trend = trend_analyzer.add_snapshot(complexity, maintainability, debt)
@@ -153,7 +153,7 @@ print(f"Complexity Trend: {trends['complexity_trend']}")
 
 ### Identify Technical Debt
 ```python
-from callflow_tracer.code_quality import TechnicalDebtAnalyzer
+from callflow_tracer.analysis.code_quality import TechnicalDebtAnalyzer
 
 debt_analyzer = TechnicalDebtAnalyzer()
 debt_indicators = debt_analyzer.analyze_from_metrics(complexity, maintainability)

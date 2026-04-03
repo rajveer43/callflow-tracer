@@ -101,7 +101,7 @@ Exemplars connect high-value metrics to specific trace spans.
 
 ```python
 from callflow_tracer import trace_scope, custom_metric, MetricsCollector
-from callflow_tracer.opentelemetry_exporter import export_callgraph_with_metrics
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_with_metrics
 
 @custom_metric("process_order", sla_threshold=1.0)
 def process_order(order_id):
@@ -172,7 +172,7 @@ resource_attributes:
 **Python API:**
 
 ```python
-from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_to_otel
 
 result = export_callgraph_to_otel(
     callgraph,
@@ -208,7 +208,7 @@ callflow-tracer otel trace.json --environment development
 
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_to_otel
 
 with trace_scope(None) as graph:
     # Your code here
@@ -227,7 +227,7 @@ print(f"Exported {result['span_count']} spans")
 ### Advanced Export with Exemplars
 
 ```python
-from callflow_tracer.opentelemetry_exporter import (
+from callflow_tracer.observability.opentelemetry_exporter import (
     export_callgraph_to_otel,
     CallFlowExemplar
 )
@@ -257,7 +257,7 @@ print(f"Exemplars linked: {result['exemplar_count']}")
 ### With Custom Metrics
 
 ```python
-from callflow_tracer.opentelemetry_exporter import export_callgraph_with_metrics
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_with_metrics
 from callflow_tracer import MetricsCollector
 
 metrics = MetricsCollector.get_metrics()
@@ -472,7 +472,7 @@ callflow-tracer otel trace.json \
 ```python
 from fastapi import FastAPI
 from callflow_tracer import trace_scope, custom_metric
-from callflow_tracer.opentelemetry_exporter import export_callgraph_to_otel
+from callflow_tracer.observability.opentelemetry_exporter import export_callgraph_to_otel
 
 app = FastAPI()
 

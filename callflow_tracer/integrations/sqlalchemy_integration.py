@@ -1,4 +1,5 @@
 """SQLAlchemy integration for callflow-tracer."""
+
 from __future__ import annotations
 
 import time
@@ -19,7 +20,9 @@ def _get_graph() -> CallGraph:
     return graph if graph is not None else CallGraph()
 
 
-def instrument_sqlalchemy_engine(engine: "Engine", label: str = "sqlalchemy.query") -> None:
+def instrument_sqlalchemy_engine(
+    engine: "Engine", label: str = "sqlalchemy.query"
+) -> None:
     """
     Attach event listeners to a SQLAlchemy Engine to record query timings.
 
@@ -28,14 +31,20 @@ def instrument_sqlalchemy_engine(engine: "Engine", label: str = "sqlalchemy.quer
         label: Synthetic caller node name for DB queries
     """
     if event is None:
-        raise RuntimeError("SQLAlchemy is not installed. Install with extras: callflow-tracer[db]")
+        raise RuntimeError(
+            "SQLAlchemy is not installed. Install with extras: callflow-tracer[db]"
+        )
 
     @event.listens_for(engine, "before_cursor_execute")
-    def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # noqa: D401
+    def _before_cursor_execute(
+        conn, cursor, statement, parameters, context, executemany
+    ):  # noqa: D401
         context._cft_start_time = time.time()
 
     @event.listens_for(engine, "after_cursor_execute")
-    def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany):  # noqa: D401
+    def _after_cursor_execute(
+        conn, cursor, statement, parameters, context, executemany
+    ):  # noqa: D401
         start = getattr(context, "_cft_start_time", None)
         if start is None:
             return

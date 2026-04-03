@@ -132,7 +132,7 @@ Forecasts resource usage.
 
 ### Predict Performance Issues
 ```python
-from callflow_tracer.predictive_analysis import PerformancePredictor
+from callflow_tracer.analysis.predictive_analysis import PerformancePredictor
 
 predictor = PerformancePredictor("trace_history.json")
 predictions = predictor.predict_performance_issues(current_trace)
@@ -147,7 +147,7 @@ for pred in predictions:
 
 ### Plan Capacity
 ```python
-from callflow_tracer.predictive_analysis import CapacityPlanner
+from callflow_tracer.analysis.predictive_analysis import CapacityPlanner
 from datetime import datetime, timedelta
 
 planner = CapacityPlanner()
@@ -161,7 +161,7 @@ print(f"Recommendations: {prediction.recommendations}")
 
 ### Analyze Scalability
 ```python
-from callflow_tracer.predictive_analysis import ScalabilityAnalyzer
+from callflow_tracer.analysis.predictive_analysis import ScalabilityAnalyzer
 
 analyzer = ScalabilityAnalyzer()
 load_perf = {100: 0.1, 1000: 1.0, 10000: 100.0}
@@ -175,7 +175,7 @@ print(f"Max Recommended Load: {analysis.max_recommended_load}")
 
 ### Forecast Resources
 ```python
-from callflow_tracer.predictive_analysis import ResourceForecaster
+from callflow_tracer.analysis.predictive_analysis import ResourceForecaster
 from datetime import datetime, timedelta
 
 forecaster = ResourceForecaster()

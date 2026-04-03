@@ -1,4 +1,5 @@
 """psycopg2 integration for callflow-tracer."""
+
 from __future__ import annotations
 
 import time
@@ -22,7 +23,9 @@ def instrument_psycopg2(label: str = "psycopg2.query") -> None:
     Monkey-patch psycopg2.connect to wrap returned connections and trace queries.
     """
     if psycopg2 is None:
-        raise RuntimeError("psycopg2 is not installed. Install with extras: callflow-tracer[db]")
+        raise RuntimeError(
+            "psycopg2 is not installed. Install with extras: callflow-tracer[db]"
+        )
 
     original_connect = psycopg2.connect  # type: ignore
 

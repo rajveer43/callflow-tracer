@@ -14,8 +14,10 @@ This example demonstrates all the advanced graph layout options available in cal
 
 Each layout can be customized with different spacing options.
 """
-import os 
+
+import os
 import sys
+
 CURRENT_DIR = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if REPO_ROOT not in sys.path:
@@ -44,7 +46,7 @@ def fetch_user_data(user_id: int):
     cached = cache_lookup(f"user_{user_id}")
     if cached:
         return cached
-    
+
     result = database_query(f"SELECT * FROM users WHERE id={user_id}")
     return result
 
@@ -67,12 +69,8 @@ def aggregate_user_activity(user_id: int):
     user = fetch_user_data(user_id)
     posts = fetch_user_posts(user_id)
     comments = fetch_user_comments(user_id)
-    
-    return {
-        'user': user,
-        'posts': posts,
-        'comments': comments
-    }
+
+    return {"user": user, "posts": posts, "comments": comments}
 
 
 @trace
@@ -119,19 +117,19 @@ def process_user_request(user_id: int, data: dict):
     # Validate
     if not validate_input(data):
         return {"error": "Invalid input"}
-    
+
     # Transform
     transformed = transform_data(data)
-    
+
     # Get user context
     user_activity = aggregate_user_activity(user_id)
-    
+
     # Save results
     save_to_database(transformed)
-    
+
     # Send notification
     send_notification(user_id, "Request processed successfully")
-    
+
     return {"status": "success", "data": transformed}
 
 
@@ -140,32 +138,29 @@ def batch_process_requests(requests: list):
     """Process multiple requests in batch"""
     results = []
     for req in requests:
-        result = process_user_request(req['user_id'], req['data'])
+        result = process_user_request(req["user_id"], req["data"])
         results.append(result)
-    
+
     # Run analytics
-    user_ids = [req['user_id'] for req in requests]
+    user_ids = [req["user_id"] for req in requests]
     analytics = process_analytics(user_ids)
-    
-    return {
-        'results': results,
-        'analytics': analytics
-    }
+
+    return {"results": results, "analytics": analytics}
 
 
 def main():
     """Main function to demonstrate the call flow"""
-    
+
     # Simulate some requests
     requests = [
-        {'user_id': 1, 'data': {'action': 'update_profile'}},
-        {'user_id': 2, 'data': {'action': 'create_post'}},
-        {'user_id': 3, 'data': {'action': 'add_comment'}},
+        {"user_id": 1, "data": {"action": "update_profile"}},
+        {"user_id": 2, "data": {"action": "create_post"}},
+        {"user_id": 3, "data": {"action": "add_comment"}},
     ]
-    
+
     # Process batch
     results = batch_process_requests(requests)
-    
+
     print(f"Processed {len(results['results'])} requests")
     print(f"Analytics generated for {len(results['analytics'])} users")
 
@@ -187,10 +182,10 @@ if __name__ == "__main__":
     print("  🌿 Organic (Spring) - Natural spring-based layout")
     print("\n" + "=" * 70)
     print("\nRunning traced functions...")
-    
+
     with trace_scope("advanced_layouts_demo.html"):
         main()
-    
+
     print("\n" + "=" * 70)
     print("✅ Demo complete!")
     print("\nOpen 'advanced_layouts_demo.html' in your browser to explore")

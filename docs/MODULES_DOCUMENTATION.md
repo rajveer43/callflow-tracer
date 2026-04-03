@@ -132,7 +132,7 @@ def compare_profiles(profile1, profile2):
 
 #### Example:
 ```python
-from callflow_tracer.profiling import profile_function
+from callflow_tracer.performance.profiling import profile_function
 
 def slow_function():
     total = 0
@@ -659,7 +659,7 @@ callflow-tracer export trace.json --format html
 
 #### Example:
 ```python
-from callflow_tracer.code_quality import CodeQualityAnalyzer
+from callflow_tracer.analysis.code_quality import CodeQualityAnalyzer
 
 analyzer = CodeQualityAnalyzer()
 report = analyzer.analyze(graph)
@@ -685,7 +685,7 @@ print(f"Complexity: {report['avg_complexity']}")
 
 #### Example:
 ```python
-from callflow_tracer.code_churn import CodeChurnAnalyzer
+from callflow_tracer.analysis.code_churn import CodeChurnAnalyzer
 
 analyzer = CodeChurnAnalyzer()
 metrics = analyzer.analyze(git_log)
@@ -712,7 +712,7 @@ print(f"Hotspots: {metrics['hotspots']}")
 
 #### Example:
 ```python
-from callflow_tracer.memory_leak_detector import MemoryLeakDetector
+from callflow_tracer.performance.memory_leak_detector import MemoryLeakDetector
 
 detector = MemoryLeakDetector()
 leaks = detector.detect(graph)
@@ -738,7 +738,7 @@ print(f"Potential leaks: {len(leaks)}")
 
 #### Example:
 ```python
-from callflow_tracer.memory_leak_visualizer import MemoryLeakVisualizer
+from callflow_tracer.performance.memory_leak_visualizer import MemoryLeakVisualizer
 
 viz = MemoryLeakVisualizer()
 html = viz.visualize(leaks)
@@ -766,7 +766,7 @@ with open('leaks.html', 'w') as f:
 
 #### Example:
 ```python
-from callflow_tracer.predictive_analysis import PredictiveAnalyzer
+from callflow_tracer.analysis.predictive_analysis import PredictiveAnalyzer
 
 analyzer = PredictiveAnalyzer()
 predictions = analyzer.predict(historical_traces)
@@ -792,7 +792,7 @@ print(f"Predicted bottleneck: {predictions['bottleneck']}")
 
 #### Example:
 ```python
-from callflow_tracer.async_tracer import AsyncTracer
+from callflow_tracer.core.async_tracer import AsyncTracer
 
 tracer = AsyncTracer()
 tracer.start()
@@ -825,7 +825,7 @@ def generate_comparison_report(comparison):
 
 #### Example:
 ```python
-from callflow_tracer.comparison import compare_traces
+from callflow_tracer.visualization.comparison import compare_traces
 
 diff = compare_traces(baseline, current)
 print(f"Differences: {diff}")
@@ -850,7 +850,7 @@ print(f"Differences: {diff}")
 
 #### Example:
 ```python
-from callflow_tracer.flamegraph import FlamegraphGenerator
+from callflow_tracer.visualization.flamegraph import FlamegraphGenerator
 
 gen = FlamegraphGenerator()
 svg = gen.generate(graph)
@@ -873,7 +873,7 @@ with open('flamegraph.svg', 'w') as f:
 
 #### Example:
 ```python
-from callflow_tracer.flamegraph_enhanced import EnhancedFlamegraph
+from callflow_tracer.visualization.flamegraph_enhanced import EnhancedFlamegraph
 
 fg = EnhancedFlamegraph()
 html = fg.generate_interactive(graph)
@@ -899,7 +899,7 @@ html = fg.generate_interactive(graph)
 #### Example:
 ```python
 # In Jupyter notebook
-from callflow_tracer.jupyter import JupyterTracer
+from callflow_tracer.visualization.jupyter import JupyterTracer
 
 tracer = JupyterTracer()
 tracer.start()

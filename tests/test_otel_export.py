@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import trace_scope, custom_metric, MetricsCollector
 from callflow_tracer.opentelemetry_exporter import (
@@ -39,7 +39,7 @@ class TestCallFlowExemplar(unittest.TestCase):
             span_id="span-456",
             value=0.234,
             metric_name="test_metric",
-            attributes={"key": "value"}
+            attributes={"key": "value"},
         )
         self.assertEqual(exemplar.trace_id, "trace-123")
         self.assertEqual(exemplar.span_id, "span-456")
@@ -53,7 +53,7 @@ class TestCallFlowExemplar(unittest.TestCase):
             span_id="span-456",
             value=0.5,
             metric_name="metric",
-            attributes={"tag": "value"}
+            attributes={"tag": "value"},
         )
         data = exemplar.to_dict()
         self.assertIn("trace_id", data)
@@ -68,6 +68,7 @@ class TestOTelExport(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+
         # Create a simple trace
         @custom_metric("test_func", sla_threshold=0.1)
         def test_func():
@@ -80,10 +81,7 @@ class TestOTelExport(unittest.TestCase):
     def test_export_basic(self):
         """Test basic OTel export."""
         try:
-            result = export_callgraph_to_otel(
-                self.graph,
-                service_name="test-service"
-            )
+            result = export_callgraph_to_otel(self.graph, service_name="test-service")
             self.assertEqual(result["status"], "success")
             self.assertGreater(result["span_count"], 0)
             self.assertEqual(result["service_name"], "test-service")
@@ -94,9 +92,7 @@ class TestOTelExport(unittest.TestCase):
         """Test export with environment tag."""
         try:
             result = export_callgraph_to_otel(
-                self.graph,
-                service_name="test-service",
-                environment="staging"
+                self.graph, service_name="test-service", environment="staging"
             )
             self.assertEqual(result["environment"], "staging")
         except OpenTelemetryNotAvailable:
@@ -106,9 +102,7 @@ class TestOTelExport(unittest.TestCase):
         """Test export with sampling."""
         try:
             result = export_callgraph_to_otel(
-                self.graph,
-                service_name="test-service",
-                sampling_rate=0.5
+                self.graph, service_name="test-service", sampling_rate=0.5
             )
             self.assertEqual(result["sampling_rate"], 0.5)
         except OpenTelemetryNotAvailable:
@@ -121,14 +115,12 @@ class TestOTelExport(unittest.TestCase):
                 trace_id="test-trace",
                 span_id="test-span",
                 value=0.1,
-                metric_name="test_func"
+                metric_name="test_func",
             )
         ]
         try:
             result = export_callgraph_to_otel(
-                self.graph,
-                service_name="test-service",
-                exemplars=exemplars
+                self.graph, service_name="test-service", exemplars=exemplars
             )
             self.assertGreaterEqual(result["exemplar_count"], 0)
         except OpenTelemetryNotAvailable:
@@ -136,15 +128,10 @@ class TestOTelExport(unittest.TestCase):
 
     def test_export_with_resource_attributes(self):
         """Test export with resource attributes."""
-        attrs = {
-            "service.version": "1.0.0",
-            "deployment.environment": "test"
-        }
+        attrs = {"service.version": "1.0.0", "deployment.environment": "test"}
         try:
             result = export_callgraph_to_otel(
-                self.graph,
-                service_name="test-service",
-                resource_attributes=attrs
+                self.graph, service_name="test-service", resource_attributes=attrs
             )
             self.assertEqual(result["status"], "success")
         except OpenTelemetryNotAvailable:
@@ -155,9 +142,7 @@ class TestOTelExport(unittest.TestCase):
         metrics = MetricsCollector.get_metrics()
         try:
             result = export_callgraph_with_metrics(
-                self.graph,
-                metrics,
-                service_name="test-service"
+                self.graph, metrics, service_name="test-service"
             )
             self.assertEqual(result["status"], "success")
         except OpenTelemetryNotAvailable:
@@ -198,18 +183,15 @@ class TestOTelConfig(unittest.TestCase):
         """Test saving and loading config."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = os.path.join(tmpdir, "test_config.yaml")
-            
+
             # Save config
             config = OTelConfig()
             config.save_to_file(config_path, format="yaml")
             self.assertTrue(os.path.exists(config_path))
-            
+
             # Load config
             config2 = OTelConfig(config_path)
-            self.assertEqual(
-                config2.get("service_name"),
-                config.get("service_name")
-            )
+            self.assertEqual(config2.get("service_name"), config.get("service_name"))
 
     def test_config_env_override(self):
         """Test environment variable override."""
@@ -224,9 +206,7 @@ class TestOTelConfig(unittest.TestCase):
         config = OTelConfig()
         new_config = {
             "service_name": "merged-service",
-            "exporter": {
-                "type": "otlp_grpc"
-            }
+            "exporter": {"type": "otlp_grpc"},
         }
         config._merge_config(new_config)
         self.assertEqual(config.get("service_name"), "merged-service")
@@ -238,6 +218,7 @@ class TestOTelIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+
         @custom_metric("integration_test", sla_threshold=0.1)
         def func_a():
             return func_b()
@@ -263,7 +244,7 @@ class TestOTelIntegration(unittest.TestCase):
                         trace_id="integration-test",
                         span_id="test-span",
                         value=metric_data.get("value", 0),
-                        metric_name=metric_name
+                        metric_name=metric_name,
                     )
                     exemplars.append(exemplar)
 
@@ -274,7 +255,7 @@ class TestOTelIntegration(unittest.TestCase):
                 environment="test",
                 exemplars=exemplars,
                 sampling_rate=1.0,
-                resource_attributes={"service.version": "1.0.0"}
+                resource_attributes={"service.version": "1.0.0"},
             )
 
             self.assertEqual(result["status"], "success")

@@ -6,8 +6,9 @@ The 3D view provides an immersive way to explore function call relationships
 with multiple layout algorithms and interactive controls.
 """
 
-import os 
+import os
 import sys
+
 CURRENT_DIR = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if REPO_ROOT not in sys.path:
@@ -16,7 +17,6 @@ if REPO_ROOT not in sys.path:
 from callflow_tracer import trace, export_html_3d, get_current_graph
 import time
 import random
-
 
 
 @trace
@@ -39,10 +39,10 @@ def fetch_user_data(user_id: int):
     """Fetch user data with caching"""
     cache_key = f"user_{user_id}"
     cached = cache_lookup(cache_key)
-    
+
     if cached:
         return cached
-    
+
     result = database_query(f"SELECT * FROM users WHERE id={user_id}", "users")
     return result
 
@@ -72,13 +72,8 @@ def aggregate_user_activity(user_id: int):
     posts = fetch_user_posts(user_id)
     comments = fetch_user_comments(user_id)
     likes = fetch_user_likes(user_id)
-    
-    return {
-        'user': user,
-        'posts': posts,
-        'comments': comments,
-        'likes': likes
-    }
+
+    return {"user": user, "posts": posts, "comments": comments, "likes": likes}
 
 
 @trace
@@ -109,7 +104,7 @@ def validate_input(data: dict):
 def transform_data(data: dict):
     """Transform data for processing"""
     time.sleep(random.uniform(0.005, 0.015))
-    return {**data, 'transformed': True}
+    return {**data, "transformed": True}
 
 
 @trace
@@ -125,19 +120,19 @@ def process_user_request(user_id: int, data: dict):
     # Validate
     if not validate_input(data):
         return {"error": "Invalid input"}
-    
+
     # Transform
     transformed = transform_data(data)
-    
+
     # Get user context
     user_activity = aggregate_user_activity(user_id)
-    
+
     # Save results
     save_to_database(transformed)
-    
+
     # Send notification
     send_notification(user_id, "Request processed successfully")
-    
+
     return {"status": "success", "data": transformed}
 
 
@@ -146,17 +141,14 @@ def batch_process_requests(requests: list):
     """Process multiple requests in batch"""
     results = []
     for req in requests:
-        result = process_user_request(req['user_id'], req['data'])
+        result = process_user_request(req["user_id"], req["data"])
         results.append(result)
-    
+
     # Run analytics
-    user_ids = [req['user_id'] for req in requests]
+    user_ids = [req["user_id"] for req in requests]
     analytics = process_analytics(user_ids)
-    
-    return {
-        'results': results,
-        'analytics': analytics
-    }
+
+    return {"results": results, "analytics": analytics}
 
 
 @trace
@@ -177,22 +169,22 @@ def send_email_report(report: str):
 def main():
     """Main function to demonstrate the call flow"""
     print("🚀 Starting 3D Visualization Demo...")
-    
+
     # Simulate some requests
     requests = [
-        {'user_id': 1, 'data': {'action': 'update_profile', 'value': 'new_name'}},
-        {'user_id': 2, 'data': {'action': 'create_post', 'content': 'Hello World'}},
-        {'user_id': 3, 'data': {'action': 'add_comment', 'text': 'Great post!'}},
-        {'user_id': 4, 'data': {'action': 'like_post', 'post_id': 123}},
+        {"user_id": 1, "data": {"action": "update_profile", "value": "new_name"}},
+        {"user_id": 2, "data": {"action": "create_post", "content": "Hello World"}},
+        {"user_id": 3, "data": {"action": "add_comment", "text": "Great post!"}},
+        {"user_id": 4, "data": {"action": "like_post", "post_id": 123}},
     ]
-    
+
     # Process batch
     results = batch_process_requests(requests)
-    
+
     # Generate and send report
     report = generate_report(results)
     send_email_report(report)
-    
+
     print(f"✅ Processed {len(results['results'])} requests")
     print(f"📊 Analytics generated for {len(results['analytics'])} users")
     print(f"📧 Report sent: {report}")
@@ -227,17 +219,17 @@ if __name__ == "__main__":
     print()
     print("=" * 80)
     print()
-    
+
     # Run the traced code
     main()
-    
+
     # Get the call graph
     graph = get_current_graph()
-    
+
     # Export to 3D HTML
     output_file = "3d_visualization_demo.html"
     export_html_3d(graph, output_file, title="CallFlow 3D Visualization Demo")
-    
+
     print()
     print("=" * 80)
     print("✅ 3D Visualization Generated!")

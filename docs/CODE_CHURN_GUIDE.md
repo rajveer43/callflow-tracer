@@ -89,7 +89,7 @@ Correlates churn with quality metrics.
 
 ### Analyze File Churn
 ```python
-from callflow_tracer.code_churn import CodeChurnAnalyzer
+from callflow_tracer.analysis.code_churn import CodeChurnAnalyzer
 
 analyzer = CodeChurnAnalyzer(".")
 metrics = analyzer.analyze_file_churn("src/main.py", days=90)
@@ -103,7 +103,7 @@ print(f"Authors: {', '.join(metrics.authors)}")
 
 ### Identify Hotspots
 ```python
-from callflow_tracer.code_churn import CodeChurnAnalyzer
+from callflow_tracer.analysis.code_churn import CodeChurnAnalyzer
 
 analyzer = CodeChurnAnalyzer(".")
 hotspots = analyzer.identify_hotspots(".", days=90, top_n=10)
@@ -117,7 +117,7 @@ for i, hotspot in enumerate(hotspots, 1):
 
 ### Correlate with Quality
 ```python
-from callflow_tracer.code_churn import (
+from callflow_tracer.analysis.code_churn import (
     CodeChurnAnalyzer, 
     ChurnCorrelationAnalyzer
 )
@@ -146,7 +146,7 @@ for corr in correlations:
 
 ### Generate Full Report
 ```python
-from callflow_tracer.code_churn import generate_churn_report
+from callflow_tracer.analysis.code_churn import generate_churn_report
 
 report = generate_churn_report(".", days=180)
 

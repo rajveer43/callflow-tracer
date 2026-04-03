@@ -42,7 +42,15 @@ Replace `your-api-token-here` with your actual API tokens.
 ### 1. Update Version (if needed)
 
 ```bash
-python version.py 1.0.0
+python version.py auto
+```
+
+If you want to force a specific bump:
+
+```bash
+python version.py patch
+python version.py minor
+python version.py major
 ```
 
 ### 2. Test Locally
@@ -63,11 +71,35 @@ This will:
 - Build the package (wheel and source distribution)
 - Check the package with twine
 
-### 4. Test on Test PyPI (Recommended)
+### 4. Automated Publishing Commands
+
+The publish script supports non-interactive publishing to Test PyPI, PyPI, or both.
 
 ```bash
-python publish.py
-# Choose option 1 for Test PyPI
+python publish.py testpypi --yes
+python publish.py pypi --yes
+python publish.py both --yes
+```
+
+Use `--skip-build` if you already built `dist/` and only want to upload existing artifacts:
+
+```bash
+python publish.py both --yes --skip-build
+```
+
+Recommended flow:
+
+```bash
+python version.py auto
+python build.py
+python publish.py testpypi --yes
+python publish.py pypi --yes
+```
+
+### 5. Test on Test PyPI (Recommended)
+
+```bash
+python publish.py testpypi --yes
 ```
 
 Then test the package:
@@ -76,11 +108,18 @@ Then test the package:
 pip install --index-url https://test.pypi.org/simple/ callflow-tracer
 ```
 
-### 5. Publish to PyPI
+### 6. Publish to PyPI
 
 ```bash
-python publish.py
-# Choose option 2 for PyPI
+python publish.py pypi --yes
+```
+
+### 7. Publish to Both Targets
+
+If you want to upload the same built artifacts to both indexes:
+
+```bash
+python publish.py both --yes
 ```
 
 ## Manual Publishing
@@ -120,9 +159,12 @@ twine upload dist/*
 ### Version Management
 
 - Use semantic versioning (MAJOR.MINOR.PATCH)
-- Update version in both pyproject.toml and __init__.py
+- Use `python version.py auto` to infer the next version from conventional commits
+- The script updates version in both `pyproject.toml` and `callflow_tracer/__init__.py`
 - Test thoroughly before publishing
 - Consider using pre-release versions (e.g., 1.0.0a1)
+- `publish.py` accepts `testpypi`, `pypi`, or `both` with `--yes` for fully automated runs
+- `publish.py --skip-build` uploads existing artifacts in `dist/`
 
 ## Security Notes
 

@@ -1,4 +1,5 @@
 """FastAPI/Starlette integration for callflow-tracer."""
+
 from __future__ import annotations
 
 import time

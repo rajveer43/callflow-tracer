@@ -13,7 +13,7 @@ import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import (
     trace_scope,
@@ -21,12 +21,12 @@ from callflow_tracer import (
     MetricsCollector,
     export_html,
 )
-from callflow_tracer.opentelemetry_exporter import (
+from callflow_tracer.observability.opentelemetry_exporter import (
     export_callgraph_to_otel,
     export_callgraph_with_metrics,
     CallFlowExemplar,
 )
-from callflow_tracer.otel_config import OTelConfig
+from callflow_tracer.observability.otel_config import OTelConfig
 
 
 # Example 1: Simple functions with custom metrics
@@ -88,9 +88,7 @@ def main():
     print("\n[3] Exporting to OpenTelemetry (basic)...")
     try:
         result = export_callgraph_to_otel(
-            graph,
-            service_name="example-service",
-            environment="development"
+            graph, service_name="example-service", environment="development"
         )
         print(f"   ✓ Export successful!")
         print(f"     - Spans exported: {result['span_count']}")
@@ -112,7 +110,7 @@ def main():
                     span_id="example-span-001",
                     value=metric_data.get("value", 0),
                     metric_name=metric_name,
-                    attributes=metric_data.get("tags", {})
+                    attributes=metric_data.get("tags", {}),
                 )
                 exemplars.append(exemplar)
 
@@ -125,7 +123,7 @@ def main():
             resource_attributes={
                 "service.version": "1.0.0",
                 "deployment.environment": "development",
-            }
+            },
         )
         print(f"   ✓ Export with exemplars successful!")
         print(f"     - Spans exported: {result['span_count']}")
@@ -140,7 +138,7 @@ def main():
             graph,
             metrics,
             service_name="example-service",
-            resource_attributes={"service.version": "1.0.0"}
+            resource_attributes={"service.version": "1.0.0"},
         )
         print(f"   ✓ Metrics bridging successful!")
         print(f"     - Spans exported: {result['span_count']}")
@@ -155,7 +153,7 @@ def main():
             graph,
             service_name="example-service",
             environment="development",
-            sampling_rate=0.5  # Only export functions called >= 2 times
+            sampling_rate=0.5,  # Only export functions called >= 2 times
         )
         print(f"   ✓ Sampling export successful!")
         print(f"     - Spans exported (sampled): {result['span_count']}")

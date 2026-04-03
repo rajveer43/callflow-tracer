@@ -21,7 +21,13 @@ This module provides comprehensive intelligent analysis capabilities including:
 - Visual debugging tools
 """
 
-from .llm_provider import LLMProvider, OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
+from .llm_provider import (
+    LLMProvider,
+    OpenAIProvider,
+    AnthropicProvider,
+    GeminiProvider,
+    OllamaProvider,
+)
 from .summarizer import TraceSummarizer, summarize_trace
 from .query_engine import QueryEngine, query_trace
 from .root_cause_analyzer import RootCauseAnalyzer, analyze_root_cause
@@ -47,79 +53,63 @@ from .visual_debugger import VisualDebugger, create_visual_debugger
 
 __all__ = [
     # Core LLM providers
-    'LLMProvider',
-    'OpenAIProvider', 
-    'AnthropicProvider',
-    'GeminiProvider',
-    'OllamaProvider',
-    
+    "LLMProvider",
+    "OpenAIProvider",
+    "AnthropicProvider",
+    "GeminiProvider",
+    "OllamaProvider",
     # Original AI features
-    'TraceSummarizer',
-    'summarize_trace',
-    'QueryEngine',
-    'query_trace',
-    'RootCauseAnalyzer',
-    'analyze_root_cause',
-    'AnomalyDetector',
-    'detect_anomalies',
-    
+    "TraceSummarizer",
+    "summarize_trace",
+    "QueryEngine",
+    "query_trace",
+    "RootCauseAnalyzer",
+    "analyze_root_cause",
+    "AnomalyDetector",
+    "detect_anomalies",
     # Trace comparison & regression
-    'TraceComparator',
-    'compare_traces',
-    'RegressionDetector',
-    'detect_regressions',
-    
+    "TraceComparator",
+    "compare_traces",
+    "RegressionDetector",
+    "detect_regressions",
     # Continuous profiling
-    'ContinuousProfiler',
-    
+    "ContinuousProfiler",
     # Auto-fix generation
-    'AutoFixer',
-    'generate_fixes',
-    
+    "AutoFixer",
+    "generate_fixes",
     # Distributed tracing
-    'DistributedTracer',
-    
+    "DistributedTracer",
     # Test generation
-    'TestGenerator',
-    'generate_performance_tests',
-    
+    "TestGenerator",
+    "generate_performance_tests",
     # Refactoring suggestions
-    'RefactoringSuggester',
-    'suggest_refactoring',
-    
+    "RefactoringSuggester",
+    "suggest_refactoring",
     # Cost analysis
-    'CostAnalyzer',
-    'analyze_costs',
-    
+    "CostAnalyzer",
+    "analyze_costs",
     # Dependency analysis
-    'DependencyAnalyzer',
-    'analyze_dependencies',
-    
+    "DependencyAnalyzer",
+    "analyze_dependencies",
     # Trend analysis
-    'TrendAnalyzer',
-    'analyze_trends',
-    
+    "TrendAnalyzer",
+    "analyze_trends",
     # Security analysis
-    'SecurityAnalyzer',
-    'analyze_security',
-    
+    "SecurityAnalyzer",
+    "analyze_security",
     # Alert management
-    'AlertManager',
-    'create_alert_manager',
-    
+    "AlertManager",
+    "create_alert_manager",
     # Load analysis
-    'LoadAnalyzer',
-    'analyze_load_behavior',
-    
+    "LoadAnalyzer",
+    "analyze_load_behavior",
     # Documentation generation
-    'DocumentationGenerator',
-    'generate_documentation',
-    
+    "DocumentationGenerator",
+    "generate_documentation",
     # Instrumentation suggestions
-    'InstrumentationSuggester',
-    'suggest_instrumentation',
-    
+    "InstrumentationSuggester",
+    "suggest_instrumentation",
     # Visual debugging
-    'VisualDebugger',
-    'create_visual_debugger',
+    "VisualDebugger",
+    "create_visual_debugger",
 ]

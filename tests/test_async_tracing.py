@@ -8,11 +8,14 @@ import os
 import time
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer.async_tracer import (
-    trace_async, trace_scope_async, gather_traced,
-    AsyncCallGraph, get_async_stats
+    trace_async,
+    trace_scope_async,
+    gather_traced,
+    AsyncCallGraph,
+    get_async_stats,
 )
 
 
@@ -26,14 +29,14 @@ async def simple_async_function():
 
 async def test_basic_async_tracing():
     """Test basic async function tracing."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 1: Basic Async Function Tracing")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         result = await simple_async_function()
         print(f"Result: {result}")
-    
+
     assert isinstance(graph, AsyncCallGraph)
     assert len(graph.nodes) > 0
     print(f"✓ Traced {len(graph.nodes)} async function(s)")
@@ -51,18 +54,18 @@ async def fetch_data(item_id: int):
 
 async def test_multiple_async_calls():
     """Test tracing multiple async calls."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 2: Multiple Async Calls")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         results = []
         for i in range(5):
             result = await fetch_data(i)
             results.append(result)
-        
+
         print(f"Fetched {len(results)} items")
-    
+
     assert len(results) == 5
     print(f"✓ Traced {len(graph.nodes)} function(s)")
     print(f"✓ Total edges: {len(graph.edges)}")
@@ -79,19 +82,19 @@ async def process_item(item_id: int):
 
 async def test_concurrent_execution():
     """Test tracing concurrent execution."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 3: Concurrent Execution with gather_traced")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         tasks = [process_item(i) for i in range(10)]
         results = await gather_traced(*tasks)
-        
+
         print(f"Processed {len(results)} items concurrently")
-    
+
     assert len(results) == 10
     assert all(results[i] == i * 2 for i in range(10))
-    
+
     stats = get_async_stats(graph)
     print(f"✓ Async functions: {stats.get('total_async_functions', 0)}")
     print(f"✓ Timeline events: {stats.get('timeline_events', 0)}")
@@ -123,14 +126,14 @@ async def inner_async_2():
 
 async def test_nested_async_calls():
     """Test tracing nested async calls."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 4: Nested Async Calls")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         result = await outer_async()
         print(f"Result: {result}")
-    
+
     assert "Inner1" in result and "Inner2" in result
     print(f"✓ Traced {len(graph.nodes)} function(s)")
     print(f"✓ Call relationships: {len(graph.edges)}")
@@ -149,21 +152,21 @@ async def risky_async_function(should_fail: bool = False):
 
 async def test_async_exception_handling():
     """Test async tracing with exceptions."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 5: Async Exception Handling")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         # Success case
         result1 = await risky_async_function(False)
         print(f"Success result: {result1}")
-        
+
         # Failure case
         try:
             result2 = await risky_async_function(True)
         except ValueError as e:
             print(f"Caught expected error: {e}")
-    
+
     print(f"✓ Traced {len(graph.nodes)} function(s) despite exception")
     return True
 
@@ -171,25 +174,25 @@ async def test_async_exception_handling():
 # Test 6: Export async trace to HTML
 async def test_async_export_html():
     """Test exporting async trace to HTML."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 6: Export Async Trace to HTML")
-    print("="*60)
-    
+    print("=" * 60)
+
     output_file = "test_async_trace.html"
-    
+
     async with trace_scope_async(output_file) as graph:
         tasks = [process_item(i) for i in range(5)]
         await gather_traced(*tasks)
-    
+
     assert os.path.exists(output_file)
     file_size = os.path.getsize(output_file)
     print(f"✓ Created {output_file} ({file_size} bytes)")
-    
+
     # Clean up
     # if os.path.exists(output_file):
     #     os.remove(output_file)
     #     print(f"✓ Cleaned up {output_file}")
-    
+
     return True
 
 
@@ -210,24 +213,24 @@ async def slow_async():
 
 async def test_async_statistics():
     """Test async-specific statistics."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 7: Async Statistics")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         await fast_async()
         await slow_async()
         await fast_async()
-    
+
     stats = get_async_stats(graph)
-    
+
     print(f"✓ Total async functions: {stats.get('total_async_functions', 0)}")
     print(f"✓ Total async time: {stats.get('total_async_time', 0):.3f}s")
     print(f"✓ Total await time: {stats.get('total_await_time', 0):.3f}s")
     print(f"✓ Total active time: {stats.get('total_active_time', 0):.3f}s")
     print(f"✓ Efficiency: {stats.get('efficiency', 0):.2f}%")
-    
-    assert stats.get('total_async_functions', 0) > 0
+
+    assert stats.get("total_async_functions", 0) > 0
     return True
 
 
@@ -248,14 +251,14 @@ async def async_with_sync():
 
 async def test_mixed_sync_async():
     """Test async functions calling sync code."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 8: Mixed Sync and Async")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         result = await async_with_sync()
         print(f"Result: {result}")
-    
+
     assert "sync_result" in result
     print(f"✓ Traced {len(graph.nodes)} function(s)")
     return True
@@ -271,14 +274,14 @@ async def async_with_params(name: str, count: int, **kwargs):
 
 async def test_async_with_parameters():
     """Test async tracing with function parameters."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 9: Async with Parameters")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         result = await async_with_params("test", 5, extra="data")
         print(f"Result: {result}")
-    
+
     assert "test" in result and "5" in result
     print(f"✓ Traced function with parameters")
     return True
@@ -294,22 +297,22 @@ async def concurrent_task(task_id: int):
 
 async def test_concurrent_tracking():
     """Test tracking of concurrent task execution."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 10: Concurrent Tasks Tracking")
-    print("="*60)
-    
+    print("=" * 60)
+
     async with trace_scope_async() as graph:
         tasks = [concurrent_task(i) for i in range(20)]
         results = await gather_traced(*tasks)
-        
+
         print(f"Completed {len(results)} concurrent tasks")
-    
+
     stats = get_async_stats(graph)
-    max_concurrent = stats.get('max_concurrent_tasks', 0)
-    
+    max_concurrent = stats.get("max_concurrent_tasks", 0)
+
     print(f"✓ Max concurrent tasks: {max_concurrent}")
     print(f"✓ Timeline events: {stats.get('timeline_events', 0)}")
-    
+
     assert len(results) == 20
     return True
 
@@ -317,10 +320,10 @@ async def test_concurrent_tracking():
 # Main test runner
 async def run_all_tests():
     """Run all async tracing tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ASYNC TRACING TEST SUITE")
-    print("="*70)
-    
+    print("=" * 70)
+
     tests = [
         ("Basic Async Tracing", test_basic_async_tracing),
         ("Multiple Async Calls", test_multiple_async_calls),
@@ -333,10 +336,10 @@ async def run_all_tests():
         ("Async with Parameters", test_async_with_parameters),
         ("Concurrent Tracking", test_concurrent_tracking),
     ]
-    
+
     passed = 0
     failed = 0
-    
+
     for name, test_func in tests:
         try:
             result = await test_func()
@@ -350,17 +353,18 @@ async def run_all_tests():
             failed += 1
             print(f"❌ {name}: FAILED with exception: {e}")
             import traceback
+
             traceback.print_exc()
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print(f"RESULTS: {passed} passed, {failed} failed")
-    print("="*70)
-    
+    print("=" * 70)
+
     if failed == 0:
         print("✅ ALL TESTS PASSED!")
     else:
         print(f"❌ {failed} TEST(S) FAILED")
-    
+
     return failed == 0
 
 

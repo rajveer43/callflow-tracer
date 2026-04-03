@@ -1,132 +1,208 @@
 #!/usr/bin/env python3
 """
-Publish script for callflow-tracer package.
-This script uploads the package to PyPI.
+Publish script for callflow-tracer.
+
+Supported targets:
+- testpypi
+- pypi
+- both
+
+Examples:
+    python publish.py testpypi --yes
+    python publish.py pypi --yes
+    python publish.py both --yes
 """
 
+from __future__ import annotations
+
+import argparse
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
+from typing import List, Optional
 
-def run_command(cmd, description):
+
+def run_command(cmd: List[str], description: str) -> bool:
     """Run a command and handle errors."""
     print(f"🚀 {description}...")
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        print(f"✅ {description} completed successfully")
-        if result.stdout:
-            print(result.stdout)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ {description} failed: {e}")
-        if e.stdout:
-            print("STDOUT:", e.stdout)
-        if e.stderr:
-            print("STDERR:", e.stderr)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        print(f"❌ {description} failed")
+        if exc.stdout:
+            print("STDOUT:")
+            print(exc.stdout)
+        if exc.stderr:
+            print("STDERR:")
+            print(exc.stderr)
         return False
 
-def check_environment():
+    print(f"✅ {description} completed successfully")
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    return True
+
+
+def check_environment() -> bool:
     """Check if the environment is ready for publishing."""
     print("🔍 Checking environment...")
-    
-    # Check if dist directory exists
-    if not os.path.exists("dist"):
-        print("❌ Error: dist/ directory not found. Please run build.py first.")
+
+    if not os.path.exists("pyproject.toml"):
+        print(
+            "❌ Error: pyproject.toml not found. Please run this script from the package root directory."
+        )
         return False
-    
-    # Check if there are any distribution files
+
+    dist_dir = Path("dist")
+    if not dist_dir.exists():
+        print("❌ Error: dist/ directory not found. Building will create it.")
+        return True
+
+    dist_files = list(dist_dir.glob("*"))
+    if dist_files:
+        print(f"✅ Found {len(dist_files)} distribution files")
+        for file in dist_files:
+            print(f"   - {file.name}")
+    else:
+        print("⚠️  dist/ exists but is empty. A build will be required.")
+
+    return True
+
+
+def build_package() -> bool:
+    """Build the package before publishing."""
+    print("🏗️  Building package...")
+    return run_command(
+        [sys.executable, "build.py", "--skip-check"],
+        "Building package for distribution",
+    )
+
+
+def check_dist_ready() -> bool:
+    """Ensure the dist directory has built artifacts."""
     dist_files = list(Path("dist").glob("*"))
     if not dist_files:
-        print("❌ Error: No distribution files found in dist/ directory.")
+        print("❌ Error: No distribution files found in dist/. Run the build first.")
         return False
-    
-    print(f"✅ Found {len(dist_files)} distribution files")
-    for file in dist_files:
-        print(f"   - {file.name}")
-    
     return True
 
-def upload_to_test_pypi():
-    """Upload to Test PyPI first."""
-    print("🧪 Uploading to Test PyPI...")
-    
-    if not run_command("twine upload --repository testpypi dist/*", "Uploading to Test PyPI"):
+
+def upload(target: str) -> bool:
+    """Upload artifacts to the selected repository."""
+    if target == "testpypi":
+        print("🧪 Uploading to Test PyPI...")
+        cmd = [sys.executable, "-m", "twine", "upload", "--repository", "testpypi"]
+        description = "Uploading to Test PyPI"
+    else:
+        print("📦 Uploading to PyPI...")
+        cmd = [sys.executable, "-m", "twine", "upload"]
+        description = "Uploading to PyPI"
+
+    cmd.append("dist/*")
+
+    if not run_command(cmd, description):
         return False
-    
-    print("✅ Uploaded to Test PyPI successfully!")
-    print("\n🔗 Test PyPI URL: https://test.pypi.org/project/callflow-tracer/")
-    print("\nTo test the package from Test PyPI:")
-    print("pip install --index-url https://test.pypi.org/simple/ callflow-tracer")
-    
+
+    if target == "testpypi":
+        print("\n🔗 Test PyPI URL: https://test.pypi.org/project/callflow-tracer/")
+        print("Install from Test PyPI:")
+        print("pip install --index-url https://test.pypi.org/simple/ callflow-tracer")
+    else:
+        print("\n🔗 PyPI URL: https://pypi.org/project/callflow-tracer/")
+        print("Install from PyPI:")
+        print("pip install callflow-tracer")
+
     return True
 
-def upload_to_pypi():
-    """Upload to PyPI."""
-    print("📦 Uploading to PyPI...")
-    
-    if not run_command("twine upload dist/*", "Uploading to PyPI"):
-        return False
-    
-    print("✅ Uploaded to PyPI successfully!")
-    print("\n🔗 PyPI URL: https://pypi.org/project/callflow-tracer/")
-    print("\nTo install the package:")
-    print("pip install callflow-tracer")
-    
-    return True
 
-def main():
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description="Publish callflow-tracer to PyPI")
+    parser.add_argument(
+        "target",
+        nargs="?",
+        choices=["testpypi", "pypi", "both"],
+        help="Publish target",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip interactive confirmation prompts",
+    )
+    parser.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Do not build before publishing",
+    )
+    return parser.parse_args(argv)
+
+
+def confirm(targets: List[str]) -> bool:
+    """Ask for confirmation before publishing."""
+    print("\n⚠️  WARNING: This will upload the package to:")
+    for target in targets:
+        print(f" - {target}")
+    print("Make sure you have:")
+    print("1. Updated the version number")
+    print("2. Tested the package locally")
+    print("3. Configured twine credentials in ~/.pypirc")
+
+    choice = input("\nDo you want to continue? (y/N): ").strip().lower()
+    return choice in {"y", "yes"}
+
+
+def main(argv: Optional[List[str]] = None) -> int:
     """Main publish process."""
+    args = parse_args(argv or sys.argv[1:])
+
     print("🚀 CallFlow Tracer - Publish Script")
     print("=" * 50)
-    
-    # Check if we're in the right directory
-    if not os.path.exists("pyproject.toml"):
-        print("❌ Error: pyproject.toml not found. Please run this script from the package root directory.")
-        sys.exit(1)
-    
-    # Check environment
+
     if not check_environment():
-        sys.exit(1)
-    
-    # Ask user for confirmation
-    print("\n⚠️  WARNING: This will upload the package to PyPI!")
-    print("Make sure you have:")
-    print("1. Built the package with build.py")
-    print("2. Tested the package locally")
-    print("3. Updated the version number if needed")
-    print("4. Created a PyPI account and configured twine")
-    
-    choice = input("\nDo you want to continue? (y/N): ").strip().lower()
-    if choice not in ['y', 'yes']:
-        print("❌ Upload cancelled.")
-        sys.exit(0)
-    
-    # Ask for upload target
-    print("\nChoose upload target:")
-    print("1. Test PyPI (recommended for first upload)")
-    print("2. PyPI (production)")
-    
-    target = input("Enter choice (1 or 2): ").strip()
-    
-    if target == "1":
-        if not upload_to_test_pypi():
-            print("❌ Upload to Test PyPI failed!")
-            sys.exit(1)
-    elif target == "2":
-        if not upload_to_pypi():
-            print("❌ Upload to PyPI failed!")
-            sys.exit(1)
+        return 1
+
+    if args.target is None:
+        print("\nChoose upload target:")
+        print("1. Test PyPI")
+        print("2. PyPI")
+        print("3. Both")
+        selection = input("Enter choice (1, 2, or 3): ").strip()
+        target_map = {"1": "testpypi", "2": "pypi", "3": "both"}
+        target = target_map.get(selection)
+        if not target:
+            print("❌ Invalid choice.")
+            return 1
     else:
-        print("❌ Invalid choice. Please run the script again.")
-        sys.exit(1)
-    
+        target = args.target
+
+    targets = ["testpypi", "pypi"] if target == "both" else [target]
+
+    if not args.yes and not confirm(targets):
+        print("❌ Upload cancelled.")
+        return 0
+
+    if not args.skip_build:
+        if not build_package():
+            return 1
+    elif not check_dist_ready():
+        return 1
+
+    if not check_dist_ready():
+        return 1
+
+    for upload_target in targets:
+        if not upload(upload_target):
+            print(f"❌ Upload to {upload_target} failed!")
+            return 1
+
     print("\n🎉 Publishing completed successfully!")
     print("\nNext steps:")
-    print("1. Verify the package on PyPI")
-    print("2. Update your GitHub repository")
-    print("3. Create a release tag")
-    print("4. Announce the package!")
+    print("1. Verify the package on the target index")
+    print("2. Push the release tag to git")
+    print("3. Announce the release")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

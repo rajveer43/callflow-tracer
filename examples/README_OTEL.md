@@ -139,7 +139,7 @@ python -m pytest tests/test_otel_export.py -v
 python -m pytest tests/test_otel_export.py::TestOTelExport::test_export_basic -v
 
 # Run with coverage
-python -m pytest tests/test_otel_export.py --cov=callflow_tracer.opentelemetry_exporter
+python -m pytest tests/test_otel_export.py --cov=callflow_tracer.observability.opentelemetry_exporter
 ```
 
 ## CLI Usage

@@ -363,7 +363,7 @@ export_html(
 **Example**:
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph
 
 with trace_scope() as graph:
     my_application()
@@ -585,7 +585,7 @@ print(result)
 **Example**:
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.jupyter import display_callgraph
+from callflow_tracer.visualization.jupyter import display_callgraph
 
 with trace_scope() as graph:
     my_function()

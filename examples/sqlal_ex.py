@@ -8,6 +8,7 @@ record query timings into the callflow trace.
 Run:
     python sqlalchemy_example.py
 """
+
 """
 Example demonstrating the performance profiling features of callflow-tracer.
 
@@ -49,17 +50,13 @@ def main() -> None:
     with trace_scope("sqlalchemy_trace.html"):
         # Create a demo table, insert some rows, then read them back
         with engine.begin() as conn:
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                     CREATE TABLE users (
                         id INTEGER PRIMARY KEY,
                         name TEXT NOT NULL,
                         email TEXT NOT NULL
                     )
-                    """
-                )
-            )
+                    """))
 
             conn.execute(
                 text("INSERT INTO users (name, email) VALUES (:name, :email)"),
@@ -80,5 +77,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -24,7 +24,7 @@ def slow_function():
     time.sleep(0.1)
     total = 0
     for i in range(1000):
-        total += i ** 2
+        total += i**2
     return total
 
 
@@ -60,32 +60,32 @@ def memory_intensive():
 def main():
     """Main function demonstrating various patterns."""
     print("Starting CLI demo...")
-    
+
     # Fast operations
     print("Running fast operations...")
     for _ in range(10):
         fast_function()
-    
+
     # Slow operations
     print("Running slow operations...")
     for _ in range(3):
         slow_function()
-    
+
     # Recursive calls
     print("Running recursive operations...")
     fib_result = recursive_fibonacci(10)
     print(f"Fibonacci(10) = {fib_result}")
-    
+
     # Nested calls
     print("Running nested operations...")
     for _ in range(5):
         nested_calls()
-    
+
     # Memory intensive
     print("Running memory intensive operations...")
     for _ in range(3):
         memory_intensive()
-    
+
     print("Demo complete!")
     return "Success"
 

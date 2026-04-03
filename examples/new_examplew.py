@@ -29,7 +29,13 @@ REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from callflow_tracer import trace, trace_scope, get_current_graph, export_html, generate_flamegraph
+from callflow_tracer import (
+    trace,
+    trace_scope,
+    get_current_graph,
+    export_html,
+    generate_flamegraph,
+)
 
 
 @trace
@@ -56,22 +62,26 @@ def memory_allocation_task(size_mb: int = 10) -> List[float]:
         # Use numpy for efficient array operations
         num_elements = int(size_mb * 1024 * 1024 / 8)  # 8 bytes per float64
         large_array = np.random.random(num_elements)
-        
+
         # Process the array
         processed = np.sort(large_array)
         mean_value = np.mean(processed)
-        
+
         return processed[:1000].tolist()  # Return smaller subset as list
     else:
-        print("WARNING: NumPy not found. Using fallback implementations for array operations.")
+        print(
+            "WARNING: NumPy not found. Using fallback implementations for array operations."
+        )
         # Fallback implementation using Python lists
-        num_elements = min(int(size_mb * 1024 * 128), 100000)  # Smaller for memory safety
+        num_elements = min(
+            int(size_mb * 1024 * 128), 100000
+        )  # Smaller for memory safety
         large_array = [random.random() for _ in range(num_elements)]
-        
+
         # Process the array
         processed = sorted(large_array)
         mean_value = sum(processed) / len(processed)
-        
+
         return processed[:1000]  # Return smaller subset to avoid memory issues
 
 
@@ -83,10 +93,10 @@ def io_simulation_task(delay_seconds: float = 0.1) -> str:
     """
     # Simulate network request
     time.sleep(delay_seconds)
-    
+
     # Simulate file processing
     time.sleep(delay_seconds * 0.5)
-    
+
     return f"IO completed after {delay_seconds * 1.5:.2f}s"
 
 
@@ -109,21 +119,21 @@ def data_processing_pipeline(data_size: int = 1000) -> Dict[str, Any]:
     """
     # Stage 1: Data generation
     raw_data = [random.random() * 100 for _ in range(data_size)]
-    
+
     # Stage 2: Data filtering
     filtered_data = [x for x in raw_data if x > 25]
-    
+
     # Stage 3: Data transformation
     transformed_data = [math.log(x + 1) for x in filtered_data]
-    
+
     # Stage 4: Statistical analysis
     stats = {
-        'mean': sum(transformed_data) / len(transformed_data),
-        'min': min(transformed_data),
-        'max': max(transformed_data),
-        'count': len(transformed_data)
+        "mean": sum(transformed_data) / len(transformed_data),
+        "min": min(transformed_data),
+        "max": max(transformed_data),
+        "count": len(transformed_data),
     }
-    
+
     return stats
 
 
@@ -134,22 +144,22 @@ def mixed_workload_function() -> Dict[str, Any]:
     This creates a complex call tree in the flamegraph.
     """
     results = {}
-    
+
     # CPU-intensive work
-    results['cpu_result'] = cpu_intensive_task(5000)
-    
+    results["cpu_result"] = cpu_intensive_task(5000)
+
     # Memory allocation
-    results['memory_data'] = memory_allocation_task(5)
-    
+    results["memory_data"] = memory_allocation_task(5)
+
     # I/O simulation
-    results['io_result'] = io_simulation_task(0.05)
-    
+    results["io_result"] = io_simulation_task(0.05)
+
     # Data processing
-    results['processing_stats'] = data_processing_pipeline(500)
-    
+    results["processing_stats"] = data_processing_pipeline(500)
+
     # Recursive computation (small to avoid stack overflow)
-    results['fibonacci'] = recursive_fibonacci(10)
-    
+    results["fibonacci"] = recursive_fibonacci(10)
+
     return results
 
 
@@ -159,25 +169,25 @@ def performance_comparison_scenario():
     Run different scenarios to compare performance characteristics.
     """
     scenarios = []
-    
+
     # Scenario 1: CPU-bound
     start_time = time.time()
     cpu_result = cpu_intensive_task(15000)
     cpu_time = time.time() - start_time
-    scenarios.append(('CPU-bound', cpu_time, cpu_result))
-    
+    scenarios.append(("CPU-bound", cpu_time, cpu_result))
+
     # Scenario 2: Memory-bound
     start_time = time.time()
     memory_result = memory_allocation_task(20)
     memory_time = time.time() - start_time
-    scenarios.append(('Memory-bound', memory_time, len(memory_result)))
-    
+    scenarios.append(("Memory-bound", memory_time, len(memory_result)))
+
     # Scenario 3: I/O-bound
     start_time = time.time()
     io_result = io_simulation_task(0.2)
     io_time = time.time() - start_time
-    scenarios.append(('I/O-bound', io_time, io_result))
-    
+    scenarios.append(("I/O-bound", io_time, io_result))
+
     return scenarios
 
 
@@ -189,29 +199,26 @@ def main_application():
     """
     print("Starting Flamegraph Example Application")
     print("=" * 50)
-    
+
     # Run mixed workload
     print("Running mixed workload...")
     mixed_results = mixed_workload_function()
     print(f"Mixed workload completed: {len(mixed_results)} results")
-    
+
     # Run performance comparison
     print("\nRunning performance comparison...")
     comparison_results = performance_comparison_scenario()
     for scenario_name, duration, result in comparison_results:
         print(f"{scenario_name}: {duration:.4f}s")
-    
+
     # Run additional CPU work to make flamegraph more interesting
     print("\nRunning additional CPU-intensive tasks...")
     for i in range(3):
         cpu_result = cpu_intensive_task(8000)
         print(f"CPU task {i+1} completed: {cpu_result:.2f}")
-    
+
     print("\nApplication completed successfully!")
-    return {
-        'mixed_results': mixed_results,
-        'comparison_results': comparison_results
-    }
+    return {"mixed_results": mixed_results, "comparison_results": comparison_results}
 
 
 def run_flamegraph_example():
@@ -222,28 +229,34 @@ def run_flamegraph_example():
     print("=" * 60)
     print("This example will generate both a call graph and a flamegraph")
     print("to help you understand your application's performance characteristics.\n")
-    
+
     # Run the application with tracing enabled
     with trace_scope("flamegraph_example"):
         results = main_application()
-        
+
         # Get the current call graph
         graph = get_current_graph()
-        
-        print(f"\nCall graph captured with {len(graph.nodes)} nodes and {len(graph.edges)} edges")
-        
+
+        print(
+            f"\nCall graph captured with {len(graph.nodes)} nodes and {len(graph.edges)} edges"
+        )
+
         # Generate HTML call graph visualization
         print("Generating HTML call graph...")
-        export_html(graph, "flamegraph_example_callgraph.html", 
-                   title="Flamegraph Example - Call Graph Visualization")
+        export_html(
+            graph,
+            "flamegraph_example_callgraph.html",
+            title="Flamegraph Example - Call Graph Visualization",
+        )
         print("Call graph saved to: flamegraph_example_callgraph.html")
-        
+
         # Generate flamegraph visualization
         print("Generating flamegraph...")
-        generate_flamegraph(graph, "flamegraph_example_flamegraph.html", 
-                          width=1400, height=900)
+        generate_flamegraph(
+            graph, "flamegraph_example_flamegraph.html", width=1400, height=900
+        )
         print("Flamegraph saved to: flamegraph_example_flamegraph.html")
-        
+
         print("\n" + "=" * 60)
         print("Example completed successfully!")
         print("\nGenerated files:")
@@ -259,14 +272,14 @@ def run_flamegraph_example():
         print("• Wide bars = performance bottlenecks")
         print("• Deep stacks = complex call chains")
         print("• Flat sections = I/O or waiting time")
-        
+
         return results
 
 
 if __name__ == "__main__":
     # Run the example
     results = run_flamegraph_example()
-    
+
     # Optional: Print some results for verification
     print(f"\nApplication Results Summary:")
     print(f"Mixed workload results: {len(results['mixed_results'])} items")

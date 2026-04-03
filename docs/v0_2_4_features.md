@@ -23,7 +23,7 @@ Date: 2025-10-07
 ### Example
 ```python
 import asyncio
-from callflow_tracer.async_tracer import trace_async, trace_scope_async, gather_traced, get_async_stats
+from callflow_tracer.core.async_tracer import trace_async, trace_scope_async, gather_traced, get_async_stats
 
 @trace_async
 async def fetch(i):
@@ -55,7 +55,7 @@ asyncio.run(main())
 ### Example
 ```python
 from callflow_tracer import trace_scope
-from callflow_tracer.comparison import export_comparison_html
+from callflow_tracer.visualization.comparison import export_comparison_html
 
 with trace_scope() as before:
     slow()
@@ -80,7 +80,7 @@ export_comparison_html(before, after, "comparison.html", label1="Before", label2
 
 ### Example
 ```python
-from callflow_tracer.memory_leak_detector import detect_leaks
+from callflow_tracer.performance.memory_leak_detector import detect_leaks
 
 with detect_leaks("leak_report.html") as detector:
     leaked = []
