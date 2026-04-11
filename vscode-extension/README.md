@@ -8,6 +8,8 @@ Visualize Python function call flows with interactive graphs and  function call 
 - **Multiple Layout Options**: Hierarchical, force-directed, circular, timeline, and more
 - **3D Visualization**: Explore your call graphs in 3D space with interactive controls
 - **Performance Profiling**: Built-in CPU profiling to identify bottlenecks
+- **Benchmark Mode**: Measure tracing overhead versus baseline runs
+- **Regression Explanation**: Compare two traces and get actionable slowdown analysis
 - **Export Options**: Export visualizations as PNG or JSON
 - **Module Filtering**: Filter call graphs by module for better clarity
 - **Flamegraph Support**: Visualize execution time with flamegraphs
@@ -27,6 +29,17 @@ Visualize Python function call flows with interactive graphs and  function call 
 2. Right-click and select "CallFlow: Trace Current File" or click the graph icon in the editor toolbar
 3. View the interactive visualization in the CallFlow Tracer panel
 4. Use the controls to change layouts, filter modules, or export the graph
+5. Run `CallFlow: Generate Summary`, `CallFlow: Explain Traces`, or `CallFlow: Run Benchmark` for the new debugging workflows
+
+## Run Locally
+
+1. Open the `vscode-extension/` folder in VS Code
+2. Make sure the workspace includes the repo root so the Python package is importable
+3. Press `F5` or use the `Run CallFlow Tracer Extension` launch configuration
+4. A new Extension Development Host window opens with the extension loaded
+5. Use the commands from the Command Palette or the editor context menu
+
+If you add Node dependencies later, run `npm install` inside `vscode-extension/` before launching.
 
 ## Commands
 
@@ -37,6 +50,9 @@ Visualize Python function call flows with interactive graphs and  function call 
 - `CallFlow: Clear Trace Data` - Clear current trace data
 - `CallFlow: Export as PNG` - Export visualization as image
 - `CallFlow: Export as JSON` - Export trace data as JSON
+- `CallFlow: Generate Summary` - Produce an actionable debug summary from the latest trace
+- `CallFlow: Explain Traces` - Compare two trace JSON files and explain regressions
+- `CallFlow: Run Benchmark` - Measure tracing overhead for the current Python file
 
 ### ✨ New Commands
 - `CallFlow: Analyze Anomalies` - Run anomaly detection on current file
@@ -57,6 +73,8 @@ Visualize Python function call flows with interactive graphs and  function call 
 - `callflowTracer.enableProfiling`: Enable performance profiling (default: true)
 - `callflowTracer.anomalyThreshold`: Z-score threshold for anomaly detection (default: 2.0)
 - `callflowTracer.autoInstrumentation`: Enable auto-instrumentation for supported libraries (default: true)
+- `callflowTracer.benchmarkRuns`: Number of runs to use for benchmark mode (default: 3)
+- `callflowTracer.benchmarkFormat`: Default benchmark output format (`text`, `json`, or `html`)
 
 ### 📦 Dependencies
 - Updated to work with CallFlow Tracer v0.3.2+

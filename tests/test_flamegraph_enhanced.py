@@ -17,7 +17,7 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph, _calculate_statistics
+from callflow_tracer.visualization.flamegraph import generate_flamegraph, _calculate_statistics
 
 
 def test_statistics_calculation():

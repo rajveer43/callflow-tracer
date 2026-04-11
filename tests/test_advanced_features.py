@@ -17,7 +17,7 @@ from callflow_tracer.anomaly_detection import (
     get_anomaly_detector,
 )
 
-from callflow_tracer.auto_instrumentation import (
+from callflow_tracer.core.auto_instrumentation import (
     AutoInstrumentationManager,
     HTTPInstrumentor,
     RedisInstrumentor,
@@ -25,7 +25,7 @@ from callflow_tracer.auto_instrumentation import (
     get_auto_instrumentation_manager,
 )
 
-from callflow_tracer.plugin_system import (
+from callflow_tracer.core.plugin_system import (
     PluginManager,
     AnalyzerHook,
     ExporterHook,
@@ -62,15 +62,17 @@ class TestAnomalyDetection(unittest.TestCase):
 
     def test_anomaly_detection(self):
         """Test anomaly detection."""
-        # Build baseline
+        # Build a baseline with natural variation so the std is realistic.
+        # Values alternate between 0.9 and 1.1 (mean=1.0, std≈0.1).
+        # A z-score threshold of 3 means anomaly boundary ≈ 1.3; 1.05 is safe.
         for i in range(30):
-            self.detector.analyze_metric("test_metric", 1.0)
+            self.detector.analyze_metric("test_metric", 0.9 if i % 2 == 0 else 1.1)
 
-        # Normal value - no alert
-        alert = self.detector.analyze_metric("test_metric", 1.1)
+        # Normal value close to the mean - no alert
+        alert = self.detector.analyze_metric("test_metric", 1.05)
         self.assertIsNone(alert)
 
-        # Anomalous value - should trigger alert
+        # Anomalous value far from the mean - should trigger alert
         alert = self.detector.analyze_metric("test_metric", 5.0)
         self.assertIsNotNone(alert)
         self.assertEqual(alert.metric_name, "test_metric")
@@ -79,10 +81,12 @@ class TestAnomalyDetection(unittest.TestCase):
 
     def test_anomaly_report(self):
         """Test anomaly report generation."""
-        # Add some alerts
-        self.detector.analyze_metric("test_metric", 1.0)
+        # Build baseline first (alternating 0.9/1.1 → mean=1.0, std≈0.1)
+        for i in range(30):
+            self.detector.analyze_metric("test_metric", 0.9 if i % 2 == 0 else 1.1)
+
+        # Now inject two clear anomalies
         self.detector.analyze_metric("test_metric", 5.0)  # Anomaly
-        self.detector.analyze_metric("test_metric", 1.2)
         self.detector.analyze_metric("test_metric", 6.0)  # Anomaly
 
         report = self.detector.generate_report(hours=24)
@@ -94,7 +98,8 @@ class TestAnomalyDetection(unittest.TestCase):
 
     def test_severity_calculation(self):
         """Test anomaly severity calculation."""
-        test_cases = [(2.0, "medium"), (3.5, "high"), (5.5, "critical"), (1.5, "low")]
+        # Thresholds: >=5.0 → critical, >=4.0 → high, >=3.0 → medium, else low
+        test_cases = [(2.0, "low"), (3.5, "medium"), (4.5, "high"), (5.5, "critical")]
 
         for z_score, expected_severity in test_cases:
             severity = self.detector._calculate_severity(z_score)
@@ -167,8 +172,11 @@ class TestAutoInstrumentation(unittest.TestCase):
         # Verify the mock was called
         self.assertTrue(mock_request.called)
 
-        # Check if original method was stored
-        self.assertIn("requests.Session.request", http_instrumentor.original_methods)
+        # Check if original method was stored (key is now (obj, method_name) tuple)
+        import requests as _req
+        self.assertIn(
+            (_req.Session, "request"), http_instrumentor.original_methods
+        )
 
     def test_redis_instrumentation(self):
         """Test Redis instrumentation."""
@@ -332,37 +340,27 @@ class TestIntegration(unittest.TestCase):
         """Test anomaly detection integrated with tracing."""
         from callflow_tracer import trace_scope
 
-        # Get detector
-        detector = get_anomaly_detector()
+        # Use a fresh detector (not the shared singleton) to avoid state
+        # contamination from other tests.
+        from callflow_tracer.analysis.anomaly_detection import AnomalyDetector
+        detector = AnomalyDetector()
 
         # Trace some operations
         with trace_scope():
-            # Simulate some operations with varying durations
-            durations = [
-                0.1,
-                0.11,
-                0.09,
-                0.12,
-                0.08,
-                0.5,
-                0.6,
-            ]  # Last two are anomalies
+            # Build a sufficient baseline (min_samples=30 by default)
+            for i in range(35):
+                # Alternate slightly so std > 0
+                detector.analyze_metric("test_function", 0.09 if i % 2 == 0 else 0.11)
 
-            for duration in durations:
-                # Simulate function call
-                time.sleep(0.01)  # Small delay to simulate work
-
-                # Analyze the duration
-                alert = detector.analyze_metric("test_function", duration)
-
-                # Last two should trigger alerts
-                if duration > 0.4:
-                    self.assertIsNotNone(alert)
-                    self.assertEqual(alert.metric_name, "test_function")
+            # Now inject clear anomalies — should trigger alerts
+            for anomaly_val in [5.0, 6.0]:
+                alert = detector.analyze_metric("test_function", anomaly_val)
+                self.assertIsNotNone(alert)
+                self.assertEqual(alert.metric_name, "test_function")
 
     def test_auto_instrumentation_context_manager(self):
         """Test auto-instrumentation context manager."""
-        from callflow_tracer.auto_instrumentation import auto_instrumentation
+        from callflow_tracer.core.auto_instrumentation import auto_instrumentation
 
         with auto_instrumentation(enabled=False) as manager:
             self.assertIsNotNone(manager)

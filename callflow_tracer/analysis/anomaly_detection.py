@@ -179,6 +179,9 @@ class AnomalyDetector:
             )
 
             self.alerts.append(alert)
+            # Still check drift even when a point anomaly was found — drift is
+            # a window-level signal independent of individual point anomalies.
+            self._check_drift(metric_name, value, baseline)
             return alert
 
         # Check for drift

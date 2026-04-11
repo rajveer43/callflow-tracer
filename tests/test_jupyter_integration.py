@@ -14,7 +14,7 @@ import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import trace_scope, profile_section
-from callflow_tracer.exporter import export_html
+from callflow_tracer.visualization.exporter import export_html
 
 
 def test_basic_tracing():
@@ -65,8 +65,10 @@ def test_recursive_tracing():
         print(f"Fibonacci(8) = {fib_result}")
         print(f"Factorial(5) = {fact_result}")
 
-    print(f"✓ Captured {len(graph.nodes)} function calls")
-    assert len(graph.nodes) > 10, "Recursive calls should generate many nodes"
+    total_calls = sum(n.call_count for n in graph.nodes.values())
+    print(f"✓ Captured {len(graph.nodes)} unique nodes, {total_calls} total calls")
+    # Recursive calls accumulate in call_count, not as separate nodes
+    assert total_calls > 10, "Recursive calls should accumulate many total calls"
     print()
 
 

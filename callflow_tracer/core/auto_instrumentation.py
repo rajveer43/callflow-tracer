@@ -43,17 +43,24 @@ class AutoInstrumentor:
 
     def _unpatch_methods(self) -> None:
         """Restore original methods."""
-        for key, original_method in self.original_methods.items():
-            module_name, method_name = key.rsplit(".", 1)
-            module = __import__(module_name, fromlist=[method_name])
-            setattr(module, method_name, original_method)
+        for (obj, method_name), original_method in list(self.original_methods.items()):
+            try:
+                setattr(obj, method_name, original_method)
+            except Exception:
+                pass
         self.original_methods.clear()
 
-    def _store_original(self, module: Any, method_name: str) -> None:
-        """Store original method before patching."""
-        key = f"{module.__name__}.{method_name}"
+    def _store_original(self, obj: Any, method_name: str) -> None:
+        """Store original method before patching.
+
+        ``obj`` can be a module, a class, or any object that supports
+        ``setattr``.  We key by ``(obj, method_name)`` so that
+        ``_unpatch_methods`` can restore directly without needing to
+        re-import by name (which was fragile for class objects).
+        """
+        key = (obj, method_name)
         if key not in self.original_methods:
-            self.original_methods[key] = getattr(module, method_name)
+            self.original_methods[key] = getattr(obj, method_name)
 
 
 class HTTPInstrumentor(AutoInstrumentor):
@@ -91,16 +98,19 @@ class HTTPInstrumentor(AutoInstrumentor):
         if hasattr(requests.Session, "request"):
             self._store_original(requests.Session, "request")
             original_request = requests.Session.request
+            # Capture instrumentor in closure — 'self' inside traced_request
+            # refers to the requests.Session instance, not this instrumentor.
+            _instrumentor = self
 
             @functools.wraps(original_request)
-            def traced_request(self, method, url, **kwargs):
+            def traced_request(session_self, method, url, **kwargs):
                 start_time = time.time()
                 try:
-                    response = original_request(self, method, url, **kwargs)
+                    response = original_request(session_self, method, url, **kwargs)
                     duration = time.time() - start_time
 
-                    # Record the HTTP call
-                    self._record_http_call(
+                    # Record the HTTP call via instrumentor closure
+                    _instrumentor._record_http_call(
                         method=method.upper(),
                         url=url,
                         status_code=response.status_code,
@@ -112,7 +122,7 @@ class HTTPInstrumentor(AutoInstrumentor):
                     return response
                 except Exception as e:
                     duration = time.time() - start_time
-                    self._record_http_call(
+                    _instrumentor._record_http_call(
                         method=method.upper(),
                         url=url,
                         status_code=None,

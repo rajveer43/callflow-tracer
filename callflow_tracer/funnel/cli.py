@@ -6,6 +6,7 @@ including tracking, monitoring, reporting, and visualization commands.
 """
 
 import click
+import html as html_lib
 import json
 import sys
 from pathlib import Path
@@ -194,16 +195,7 @@ def analyze(config: str, data: Optional[str], format: str, output: Optional[str]
         analyzer = create_funnel(config_data["name"], funnel_type.value)
 
         # Load data if provided
-        if data and Path(data).exists():
-            with open(data, "r") as f:
-                data_json = json.load(f)
-
-            # Load sessions and steps from data
-            # This is a simplified implementation
-            if "sessions" in data_json:
-                for session_data in data_json["sessions"]:
-                    # Recreate session data
-                    pass
+        _load_funnel_data(analyzer, data)
 
         # Get analytics
         analytics = analyzer.get_analytics()
@@ -274,7 +266,7 @@ def visualize(
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Create visualizer
         visualizer = create_funnel_visualizer(analyzer)
@@ -330,7 +322,7 @@ def monitor(
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Create monitor
         monitor = create_funnel_monitor(analyzer, mode)
@@ -422,7 +414,7 @@ def report(
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Generate report
         report_path = generate_funnel_report(analyzer, report_type, output)
@@ -466,7 +458,7 @@ def export(
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Parse sections
         include_sections = None
@@ -505,7 +497,7 @@ def anomalies(config: str, data: Optional[str]):
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Detect anomalies
         anomaly_results = analyze_funnel_anomalies(analyzer)
@@ -556,7 +548,7 @@ def predict(config: str, data: Optional[str], horizon: str):
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Generate predictions
         predictions = predict_funnel_performance(analyzer, horizon)
@@ -598,7 +590,7 @@ def optimize(config: str, data: Optional[str]):
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Generate optimization plan
         plan = generate_optimization_plan(analyzer)
@@ -677,7 +669,7 @@ def patterns(config: str, data: Optional[str]):
         if data and Path(data).exists():
             with open(data, "r") as f:
                 data_json = json.load(f)
-            # Load data into analyzer (simplified)
+            _load_funnel_data(analyzer, data)
 
         # Recognize patterns
         pattern_results = recognize_funnel_patterns(analyzer)
@@ -703,6 +695,25 @@ def patterns(config: str, data: Optional[str]):
     except Exception as e:
         click.echo(f"Error recognizing patterns: {e}", err=True)
         sys.exit(1)
+
+
+def _load_funnel_data(analyzer, data_path: Optional[str]) -> None:
+    """Load previously exported funnel session data into an analyzer.
+
+    NOTE: Full deserialization requires ``CallGraph.from_dict`` support and a
+    stable on-disk session format.  Until that format is finalised this helper
+    raises ``NotImplementedError`` so callers receive a clear message instead of
+    silently operating on empty data.
+    """
+    if not data_path:
+        return
+    if not Path(data_path).exists():
+        raise FileNotFoundError(f"Funnel data file not found: {data_path}")
+    raise NotImplementedError(
+        "Loading previously saved funnel session data (--data) is not yet "
+        "implemented.  Run the funnel commands without --data to analyse "
+        "in-memory sessions, or open a GitHub issue to request this feature."
+    )
 
 
 def _format_analytics_table(analytics: dict) -> str:
@@ -829,22 +840,25 @@ def _generate_funnel_html(chart_data: dict, funnel_name: str) -> str:
 
     for step in steps:
         width = step.get("width_percentage", 0)
-        name = step.get("name", "")
-        users = step.get("users", 0)
-        conversion_rate = step.get("conversion_rate", 0)
+        name = html_lib.escape(str(step.get("name", "")))
+        users = int(step.get("users", 0))
+        conversion_rate = float(step.get("conversion_rate", 0))
+        safe_width = min(max(float(width), 0), 100)
 
-        funnel_bars.append(f"""
-        <div class="funnel-bar" style="width: {width}%">
+        funnel_bars.append(
+            f"""
+        <div class="funnel-bar" style="width: {safe_width:.1f}%">
             <span class="funnel-label">{name}</span>
             <span class="funnel-metrics">{users} users ({conversion_rate:.1f}% conv)</span>
         </div>
-        """)
+        """
+        )
 
-        step_labels.append(name)
+        step_labels.append(step.get("name", ""))
         conversion_data.append(conversion_rate)
 
     return html_template.format(
-        funnel_name=funnel_name,
+        funnel_name=html_lib.escape(funnel_name),
         funnel_bars="\n".join(funnel_bars),
         step_labels=json.dumps(step_labels),
         conversion_data=json.dumps(conversion_data),
@@ -854,4 +868,7 @@ def _generate_funnel_html(chart_data: dict, funnel_name: str) -> str:
 # Add CLI group to main CLI
 def add_funnel_cli(cli_group):
     """Add funnel CLI commands to main CLI group"""
+    if not hasattr(cli_group, "add_command"):
+        return
+
     cli_group.add_command(funnel, name="funnel")

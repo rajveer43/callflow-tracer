@@ -12,7 +12,8 @@ from contextlib import asynccontextmanager
 from typing import Optional, Callable, Any
 from functools import wraps
 
-from .tracer import CallGraph, CallNode, CallEdge, _global_graph, _global_tracer
+from .tracer import CallGraph, CallNode, CallEdge, get_current_graph
+from . import tracer as _tracer_module
 
 
 class AsyncCallNode(CallNode):
@@ -43,8 +44,8 @@ class AsyncCallNode(CallNode):
 class AsyncCallGraph(CallGraph):
     """Extended CallGraph with async tracking capabilities."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, trace_options=None):
+        super().__init__(trace_options=trace_options)
         self.async_nodes = {}  # Track async-specific nodes
         self.concurrent_tasks = {}  # Track concurrent execution
         self.task_timeline = []  # Timeline of task execution
@@ -142,20 +143,11 @@ def trace_async(func: Callable) -> Callable:
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        global _global_graph
-
-        # Get or create graph
-        if _global_graph is None:
-            from .tracer import CallGraph
-
-            _global_graph = AsyncCallGraph()
-
-        # Upgrade to AsyncCallGraph if needed
-        if not isinstance(_global_graph, AsyncCallGraph):
-            # Can't upgrade existing graph, use it as-is
-            graph = _global_graph
-        else:
-            graph = _global_graph
+        # Get or create graph via module accessor to always see live global state
+        graph = _tracer_module._global_graph
+        if graph is None:
+            graph = AsyncCallGraph()
+            _tracer_module._global_graph = graph
 
         # Get function names
         caller_name = _get_async_caller_name()
@@ -170,7 +162,6 @@ def trace_async(func: Callable) -> Callable:
             graph.track_concurrent_start(callee_name)
 
         start_time = time.time()
-        await_start = None
         total_await_time = 0.0
 
         try:
@@ -180,14 +171,15 @@ def trace_async(func: Callable) -> Callable:
         finally:
             duration = time.time() - start_time
 
-            # Record the call
-            if isinstance(graph, AsyncCallGraph):
-                graph.record_async_call(
+            # Re-read in case graph was swapped during await
+            current_graph = _tracer_module._global_graph or graph
+            if isinstance(current_graph, AsyncCallGraph):
+                current_graph.record_async_call(
                     caller_name, callee_name, duration, total_await_time, args, kwargs
                 )
-                graph.track_concurrent_end(callee_name)
+                current_graph.track_concurrent_end(callee_name)
             else:
-                graph.record_call(caller_name, callee_name, duration, args, kwargs)
+                current_graph.record_call(caller_name, callee_name, duration, args, kwargs)
 
     return wrapper
 
@@ -207,26 +199,24 @@ async def trace_scope_async(
         async with trace_scope_async("my_trace.html"):
             await my_async_function()
     """
-    global _global_graph, _global_tracer
-
     # Create new async graph
     graph = AsyncCallGraph()
 
-    # Store previous state
-    prev_graph = _global_graph
-    prev_tracer = _global_tracer
+    # Store previous state via module reference to always see live globals
+    prev_graph = _tracer_module._global_graph
+    prev_tracer = _tracer_module._global_tracer
 
     try:
         # Set up new graph
-        _global_graph = graph
+        _tracer_module._global_graph = graph
         graph.start_time = time.time()
 
         yield graph
 
     finally:
         # Restore previous state
-        _global_graph = prev_graph
-        _global_tracer = prev_tracer
+        _tracer_module._global_graph = prev_graph
+        _tracer_module._global_tracer = prev_tracer
 
         # Export results if output file specified
         if output_file:
@@ -260,13 +250,13 @@ async def gather_traced(*awaitables, return_exceptions: bool = False):
             async_func3()
         )
     """
-    global _global_graph
+    graph = _tracer_module._global_graph
 
-    if isinstance(_global_graph, AsyncCallGraph):
+    if isinstance(graph, AsyncCallGraph):
         # Track that we're gathering multiple tasks
-        _global_graph.task_timeline.append(
+        graph.task_timeline.append(
             {
-                "time": time.time() - (_global_graph.start_time or time.time()),
+                "time": time.time() - (graph.start_time or time.time()),
                 "task": "gather",
                 "event": "start",
                 "count": len(awaitables),
@@ -280,11 +270,12 @@ async def gather_traced(*awaitables, return_exceptions: bool = False):
         return results
     finally:
         duration = time.time() - start_time
+        graph = _tracer_module._global_graph  # re-read after await
 
-        if isinstance(_global_graph, AsyncCallGraph):
-            _global_graph.task_timeline.append(
+        if isinstance(graph, AsyncCallGraph):
+            graph.task_timeline.append(
                 {
-                    "time": time.time() - (_global_graph.start_time or time.time()),
+                    "time": time.time() - (graph.start_time or time.time()),
                     "task": "gather",
                     "event": "end",
                     "duration": duration,

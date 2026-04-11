@@ -18,7 +18,7 @@ import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import trace_scope
-from callflow_tracer.flamegraph import generate_flamegraph, _process_for_flamegraph
+from callflow_tracer.visualization.flamegraph import generate_flamegraph, _process_for_flamegraph
 
 
 def test_basic_flamegraph_generation():

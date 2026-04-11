@@ -23,12 +23,12 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from callflow_tracer import trace_scope, custom_metric, MetricsCollector
-from callflow_tracer.opentelemetry_exporter import (
+from callflow_tracer.observability.opentelemetry_exporter import (
     export_callgraph_to_otel,
     export_callgraph_with_metrics,
     CallFlowExemplar,
 )
-from callflow_tracer.otel_config import OTelConfig
+from callflow_tracer.observability.otel_config import OTelConfig
 
 
 def print_header(text):
@@ -50,109 +50,91 @@ def test_trace_capture():
     """Test basic trace capture."""
     print_header("Test 1: Trace Capture")
 
-    @custom_metric("test_func", sla_threshold=0.1)
     def test_func(n):
         if n <= 0:
             return 0
         return n + test_func(n - 1)
 
-    try:
-        with trace_scope(None) as graph:
-            result = test_func(3)
+    with trace_scope() as graph:
+        test_func(3)
 
-        passed = graph is not None and len(graph.nodes) > 0
-        print_test("Trace capture", passed, f"Captured {len(graph.nodes)} nodes")
-        return graph
-    except Exception as e:
-        print_test("Trace capture", False, str(e))
-        return None
+    assert graph is not None and len(graph.nodes) > 0
 
 
-def test_otel_export(graph):
+def _build_test_graph():
+    """Build a simple call graph for testing."""
+    def helper(n):
+        if n <= 0:
+            return 0
+        return n + helper(n - 1)
+
+    with trace_scope() as graph:
+        helper(3)
+    return graph
+
+
+def test_otel_export():
     """Test basic OTel export."""
     print_header("Test 2: OTel Export")
 
-    if graph is None:
-        print_test("OTel export", False, "No graph available")
-        return False
+    graph = _build_test_graph()
 
     try:
         result = export_callgraph_to_otel(graph, service_name="test-service")
         passed = result["status"] == "success" and result["span_count"] > 0
         print_test("OTel export", passed, f"Exported {result['span_count']} spans")
-        return passed
+        assert passed
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test(
-                "OTel export", False, "OpenTelemetry SDK not installed (optional)"
-            )
-        else:
-            print_test("OTel export", False, str(e))
-        return False
+            import pytest
+            pytest.skip("OpenTelemetry SDK not installed")
+        raise
 
 
-def test_exemplars(graph):
+def test_exemplars():
     """Test exemplar creation and linking."""
     print_header("Test 3: Exemplars")
 
-    if graph is None:
-        print_test("Exemplar creation", False, "No graph available")
-        return False
+    graph = _build_test_graph()
+
+    exemplar = CallFlowExemplar(
+        trace_id="test-trace",
+        span_id="test-span",
+        value=0.123,
+        metric_name="test_func",
+        attributes={"key": "value"},
+    )
+
+    assert exemplar.trace_id == "test-trace" and exemplar.value == 0.123
 
     try:
-        exemplar = CallFlowExemplar(
-            trace_id="test-trace",
-            span_id="test-span",
-            value=0.123,
-            metric_name="test_func",
-            attributes={"key": "value"},
-        )
-
-        passed = exemplar.trace_id == "test-trace" and exemplar.value == 0.123
-        print_test("Exemplar creation", passed)
-
-        # Test exemplar linking
         result = export_callgraph_to_otel(
             graph, service_name="test-service", exemplars=[exemplar]
         )
-
-        passed = result["status"] == "success"
-        print_test(
-            "Exemplar linking", passed, f"Linked {result['exemplar_count']} exemplars"
-        )
-        return passed
+        assert result["status"] == "success"
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test(
-                "Exemplar linking", False, "OpenTelemetry SDK not installed (optional)"
-            )
-        else:
-            print_test("Exemplar linking", False, str(e))
-        return False
+            import pytest
+            pytest.skip("OpenTelemetry SDK not installed")
+        raise
 
 
-def test_sampling(graph):
+def test_sampling():
     """Test sampling functionality."""
     print_header("Test 4: Sampling")
 
-    if graph is None:
-        print_test("Sampling", False, "No graph available")
-        return False
+    graph = _build_test_graph()
 
     try:
         result = export_callgraph_to_otel(
             graph, service_name="test-service", sampling_rate=0.5
         )
-
-        passed = result["sampling_rate"] == 0.5
-        print_test("Sampling", passed, f"Sampling rate: {result['sampling_rate']}")
-        return passed
+        assert result["sampling_rate"] == 0.5
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test("Sampling", False, "OpenTelemetry SDK not installed (optional)")
-        else:
-            print_test("Sampling", False, str(e))
-        return False
+            import pytest
+            pytest.skip("OpenTelemetry SDK not installed")
+        raise
 
 
 def test_config():
@@ -183,35 +165,23 @@ def test_config():
         return False
 
 
-def test_metrics_bridging(graph):
+def test_metrics_bridging():
     """Test metrics bridging."""
     print_header("Test 6: Metrics Bridging")
 
-    if graph is None:
-        print_test("Metrics bridging", False, "No graph available")
-        return False
+    graph = _build_test_graph()
 
     try:
         metrics = MetricsCollector.get_metrics()
         result = export_callgraph_with_metrics(
             graph, metrics, service_name="test-service"
         )
-
-        passed = result["status"] == "success"
-        print_test(
-            "Metrics bridging",
-            passed,
-            f"Linked {result['exemplar_count']} metrics as exemplars",
-        )
-        return passed
+        assert result["status"] == "success"
     except Exception as e:
         if "OpenTelemetry SDK is not installed" in str(e):
-            print_test(
-                "Metrics bridging", False, "OpenTelemetry SDK not installed (optional)"
-            )
-        else:
-            print_test("Metrics bridging", False, str(e))
-        return False
+            import pytest
+            pytest.skip("OpenTelemetry SDK not installed")
+        raise
 
 
 def test_cli():

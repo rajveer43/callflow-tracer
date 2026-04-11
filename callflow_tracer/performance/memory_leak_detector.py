@@ -23,7 +23,14 @@ class ObjectTracker:
     """Track object allocations and references."""
 
     def __init__(self):
-        self.tracked_objects = weakref.WeakValueDictionary()
+        # Try a WeakValueDictionary first; fall back to a plain dict for types
+        # that no longer support weak references (e.g. list/dict on Python 3.14+).
+        try:
+            self.tracked_objects: Any = weakref.WeakValueDictionary()
+            self._use_weak = True
+        except Exception:
+            self.tracked_objects = {}
+            self._use_weak = False
         self.allocation_traces = {}
         self.object_types = defaultdict(int)
         self.allocation_timeline = []
@@ -35,34 +42,40 @@ class ObjectTracker:
         obj_id = id(obj)
         obj_type = type(obj).__name__
 
+        # Store object reference — prefer weak reference to avoid keeping
+        # objects alive, but fall back to a plain dict for types that do not
+        # support weak references (e.g. list/dict on Python 3.14+).
         try:
             self.tracked_objects[obj_id] = obj
-            self.object_types[obj_type] += 1
-            self.reference_counts[obj_id] = sys.getrefcount(obj)
-
-            # Store allocation trace
-            if allocation_info is None:
-                allocation_info = "".join(traceback.format_stack()[:-1])
-
-            self.allocation_traces[obj_id] = {
-                "type": obj_type,
-                "time": time.time() - (self.start_time or time.time()),
-                "trace": allocation_info,
-                "size": sys.getsizeof(obj),
-            }
-
-            self.allocation_timeline.append(
-                {
-                    "time": time.time() - (self.start_time or time.time()),
-                    "obj_id": obj_id,
-                    "type": obj_type,
-                    "action": "allocated",
-                    "refcount": sys.getrefcount(obj),
-                }
-            )
         except TypeError:
-            # Some objects can't be weakly referenced
-            pass
+            # WeakValueDictionary can't hold this type; switch to plain dict.
+            plain: Dict[int, Any] = dict(self.tracked_objects)
+            plain[obj_id] = obj
+            self.tracked_objects = plain
+
+        self.object_types[obj_type] += 1
+        self.reference_counts[obj_id] = sys.getrefcount(obj)
+
+        # Store allocation trace
+        if allocation_info is None:
+            allocation_info = "".join(traceback.format_stack()[:-1])
+
+        self.allocation_traces[obj_id] = {
+            "type": obj_type,
+            "time": time.time() - (self.start_time or time.time()),
+            "trace": allocation_info,
+            "size": sys.getsizeof(obj),
+        }
+
+        self.allocation_timeline.append(
+            {
+                "time": time.time() - (self.start_time or time.time()),
+                "obj_id": obj_id,
+                "type": obj_type,
+                "action": "allocated",
+                "refcount": sys.getrefcount(obj),
+            }
+        )
 
     def get_live_objects(self) -> Dict[int, Any]:
         """Get all currently live tracked objects."""

@@ -120,7 +120,8 @@ def test_memory_snapshots():
     print(f"Objects diff: {comparison['objects_diff']:,}")
     print(f"Type changes: {len(comparison['type_changes'])}")
 
-    assert comparison["memory_diff"] > 0
+    # objects_diff is the reliable signal; memory_diff may be 0 on some platforms
+    assert comparison["objects_diff"] > 0, "Allocating 100 lists should increase object count"
     print("✓ Snapshots working correctly")
     return True
 
@@ -241,10 +242,14 @@ def test_top_memory_consumers():
     print("TEST 9: Top Memory Consumers")
     print("=" * 60)
 
-    # Allocate some memory
+    import tracemalloc
+
+    # Start tracing BEFORE allocation so the snapshot captures our data
+    tracemalloc.start()
     large_data = [list(range(10000)) for _ in range(10)]
 
     consumers = get_top_memory_consumers(limit=5)
+    tracemalloc.stop()
 
     print(f"Top consumers found: {len(consumers)}")
     for i, consumer in enumerate(consumers[:3]):

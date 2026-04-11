@@ -9,6 +9,7 @@ from .tracer import (
     get_current_graph,
     trace,
     trace_scope,
+    TraceOptions,
 )
 from .async_tracer import (
     AsyncCallGraph,
@@ -54,6 +55,7 @@ __all__ = [
     "CallNode",
     "CallEdge",
     "CallTracer",
+    "TraceOptions",
     "trace_async",
     "trace_scope_async",
     "gather_traced",

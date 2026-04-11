@@ -10,7 +10,7 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from callflow_tracer.async_tracer import (
+from callflow_tracer.core.async_tracer import (
     trace_async,
     trace_scope_async,
     gather_traced,

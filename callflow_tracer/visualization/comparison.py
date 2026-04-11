@@ -98,9 +98,15 @@ def compare_graphs(
     # Sort by absolute time difference
     node_comparisons.sort(key=lambda x: abs(x["time_diff"]), reverse=True)
 
-    # Calculate summary statistics
-    total_time_before = data1["metadata"]["duration"]
-    total_time_after = data2["metadata"]["duration"]
+    # Use sum-of-node-call-times for comparison (consistent, excludes I/O
+    # wait time that inflates the raw wall-clock "duration" field).
+    # Fall back to wall-clock duration for older traces that lack the key.
+    total_time_before = data1["metadata"].get(
+        "total_call_time", data1["metadata"].get("duration", 0.0)
+    )
+    total_time_after = data2["metadata"].get(
+        "total_call_time", data2["metadata"].get("duration", 0.0)
+    )
     time_saved = total_time_before - total_time_after
     time_saved_pct = (
         (time_saved / total_time_before * 100) if total_time_before > 0 else 0

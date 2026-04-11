@@ -26,7 +26,7 @@ from callflow_tracer.opentelemetry_exporter import (
     CallFlowExemplar,
     OpenTelemetryNotAvailable,
 )
-from callflow_tracer.otel_config import OTelConfig
+from callflow_tracer.observability.otel_config import OTelConfig
 
 
 class TestCallFlowExemplar(unittest.TestCase):

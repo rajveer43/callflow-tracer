@@ -9,7 +9,7 @@ import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "callflow-tracer"))
 
-from callflow_tracer.exporter import _generate_html
+from callflow_tracer.visualization.exporter import _generate_html
 
 
 def test_json_export_html():

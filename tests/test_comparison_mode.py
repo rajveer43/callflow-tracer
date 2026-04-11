@@ -10,7 +10,7 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from callflow_tracer import trace_scope
-from callflow_tracer.comparison import compare_graphs, export_comparison_html
+from callflow_tracer.visualization.comparison import compare_graphs, export_comparison_html
 
 
 # Test functions for "before" optimization

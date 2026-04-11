@@ -153,4 +153,14 @@ context_test.html
 *.json
 
 node_modules/
-NOTES 
+NOTES
+
+# VS Code extension build artifacts
+vscode-extension/out/
+*.vsix
+
+# GSoC / personal docs
+GSOC_ALIGNMENT.md
+GSoC_2026_Proposal_Gemini_CLI.md
+blog_post.md
+github_comment_draft.md 

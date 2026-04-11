@@ -34,6 +34,17 @@ from ..analysis.code_quality import (
     TechnicalDebtAnalyzer,
     QualityTrendAnalyzer,
 )
+from ..analysis.debug_summary import format_debug_summary, summarize_graph
+from ..analysis.regression_explainer import (
+    explain_regression,
+    format_regression_report,
+)
+from ..benchmark import (
+    benchmark_report_to_dict,
+    export_benchmark_html,
+    format_benchmark_report,
+    run_benchmark,
+)
 from ..analysis.predictive_analysis import (
     PerformancePredictor,
     CapacityPlanner,
@@ -92,8 +103,11 @@ For more information: https://github.com/rajveer43/callflow-tracer
         self._add_profile_parser(subparsers)
         self._add_memory_leak_parser(subparsers)
         self._add_compare_parser(subparsers)
+        self._add_explain_parser(subparsers)
+        self._add_benchmark_parser(subparsers)
         self._add_export_parser(subparsers)
         self._add_info_parser(subparsers)
+        self._add_summary_parser(subparsers)
 
         # New analysis commands
         self._add_quality_parser(subparsers)
@@ -105,7 +119,7 @@ For more information: https://github.com/rajveer43/callflow-tracer
 
         # Add funnel analysis CLI if available
         if FUNNEL_AVAILABLE:
-            add_funnel_cli(subparsers)
+            self._add_funnel_parser(subparsers)
 
         return parser
 
@@ -136,6 +150,30 @@ For more information: https://github.com/rajveer43/callflow-tracer
         trace_parser.add_argument("--title", help="Title for the visualization")
         trace_parser.add_argument(
             "--include-args", action="store_true", help="Include function arguments"
+        )
+        trace_parser.add_argument(
+            "--sampling-rate",
+            type=float,
+            default=1.0,
+            help="Keep a fraction of calls in the trace (0.0-1.0)",
+        )
+        trace_parser.add_argument(
+            "--include-module",
+            action="append",
+            dest="include_modules",
+            help="Only include calls from module prefixes (repeatable)",
+        )
+        trace_parser.add_argument(
+            "--exclude-module",
+            action="append",
+            dest="exclude_modules",
+            help="Exclude calls from module prefixes (repeatable)",
+        )
+        trace_parser.add_argument(
+            "--min-duration-ms",
+            type=float,
+            default=0.0,
+            help="Skip calls faster than this duration",
         )
         trace_parser.add_argument(
             "--no-browser", action="store_true", help="Do not open browser"
@@ -229,6 +267,80 @@ For more information: https://github.com/rajveer43/callflow-tracer
             "--no-browser", action="store_true", help="Do not open browser"
         )
 
+    def _add_explain_parser(self, subparsers):
+        """Add explain subcommand parser."""
+        explain_parser = subparsers.add_parser(
+            "explain",
+            help="Explain what changed between two traces and highlight regressions",
+        )
+        explain_parser.add_argument("before", help="Baseline trace file (JSON)")
+        explain_parser.add_argument("after", help="New trace file (JSON)")
+        explain_parser.add_argument(
+            "-o", "--output", help="Optional file path for the report"
+        )
+        explain_parser.add_argument(
+            "--format", choices=["text", "json"], default="text"
+        )
+        explain_parser.add_argument(
+            "--top", type=int, default=5, help="Number of items to include"
+        )
+        explain_parser.add_argument(
+            "--label1", default="Before", help="Label for the baseline trace"
+        )
+        explain_parser.add_argument(
+            "--label2", default="After", help="Label for the new trace"
+        )
+
+    def _add_benchmark_parser(self, subparsers):
+        """Add benchmark subcommand parser."""
+        benchmark_parser = subparsers.add_parser(
+            "benchmark",
+            help="Measure tracing overhead and produce benchmark recommendations",
+        )
+        benchmark_parser.add_argument("script", help="Python script to benchmark")
+        benchmark_parser.add_argument(
+            "script_args", nargs="*", help="Arguments to pass to the script"
+        )
+        benchmark_parser.add_argument(
+            "--runs", type=int, default=3, help="Number of runs to average"
+        )
+        benchmark_parser.add_argument(
+            "--sampling-rate",
+            type=float,
+            default=1.0,
+            help="Tracing sampling rate for traced runs",
+        )
+        benchmark_parser.add_argument(
+            "--include-module",
+            action="append",
+            dest="include_modules",
+            help="Only include module prefixes (repeatable)",
+        )
+        benchmark_parser.add_argument(
+            "--exclude-module",
+            action="append",
+            dest="exclude_modules",
+            help="Exclude module prefixes (repeatable)",
+        )
+        benchmark_parser.add_argument(
+            "--min-duration-ms",
+            type=float,
+            default=0.0,
+            help="Skip calls faster than this duration",
+        )
+        benchmark_parser.add_argument(
+            "--include-args", action="store_true", help="Include function arguments"
+        )
+        benchmark_parser.add_argument(
+            "-o", "--output", help="Output file path for text/json/html reports"
+        )
+        benchmark_parser.add_argument(
+            "--format", choices=["text", "json", "html"], default="text"
+        )
+        benchmark_parser.add_argument(
+            "--no-browser", action="store_true", help="Do not open browser"
+        )
+
     def _add_export_parser(self, subparsers):
         """Add export subcommand parser."""
         exp_parser = subparsers.add_parser(
@@ -262,6 +374,22 @@ For more information: https://github.com/rajveer43/callflow-tracer
         info_parser.add_argument("file", help="Trace file to analyze (JSON)")
         info_parser.add_argument(
             "--detailed", action="store_true", help="Show detailed statistics"
+        )
+
+    def _add_summary_parser(self, subparsers):
+        """Add summary subcommand parser."""
+        summary_parser = subparsers.add_parser(
+            "summary", help="Generate an actionable debug summary from trace JSON"
+        )
+        summary_parser.add_argument("file", help="Trace file to analyze (JSON)")
+        summary_parser.add_argument(
+            "-o", "--output", help="Optional output file for the summary"
+        )
+        summary_parser.add_argument(
+            "--format", choices=["text", "json"], default="text"
+        )
+        summary_parser.add_argument(
+            "--top", type=int, default=5, help="Number of items to show"
         )
 
     def run(self, args=None):
@@ -319,7 +447,14 @@ For more information: https://github.com/rajveer43/callflow-tracer
         try:
             title = args.title or f"Call Flow: {Path(args.script).name}"
 
-            with trace_scope(None, include_args=args.include_args) as graph:
+            with trace_scope(
+                None,
+                include_args=args.include_args,
+                sampling_rate=args.sampling_rate,
+                include_modules=args.include_modules,
+                exclude_modules=args.exclude_modules,
+                min_duration_ms=args.min_duration_ms,
+            ) as graph:
                 self._execute_script(args.script, args.script_args)
 
             if args.format in ["html", "both"]:
@@ -353,6 +488,9 @@ For more information: https://github.com/rajveer43/callflow-tracer
             print(
                 f"  Total calls: {sum(node.call_count for node in graph.nodes.values())}"
             )
+
+            debug_report = summarize_graph(graph, top_n=5)
+            print(f"\n{format_debug_summary(debug_report, top_n=5)}")
 
             return 0
 
@@ -513,24 +651,10 @@ For more information: https://github.com/rajveer43/callflow-tracer
             return 1
 
     def _load_graph_from_json(self, filepath):
-        """Load a CallGraph from a JSON file."""
+        """Load a CallGraph from a JSON trace file."""
         with open(filepath, "r") as f:
             trace_data = json.load(f)
-
-        graph = CallGraph()
-        for node_data in trace_data.get("nodes", []):
-            node = CallNode(node_data["name"], node_data.get("module", ""))
-            node.call_count = node_data["call_count"]
-            node.total_time = node_data["total_time"]
-            graph.nodes[node.full_name] = node
-
-        for edge_data in trace_data.get("edges", []):
-            edge = CallEdge(edge_data["caller"], edge_data["callee"])
-            edge.call_count = edge_data["call_count"]
-            edge.total_time = edge_data["total_time"]
-            graph.edges[(edge.caller, edge.callee)] = edge
-
-        return graph
+        return CallGraph.from_dict(trace_data)
 
     def _handle_compare(self, args):
         """Handle compare command."""
@@ -563,6 +687,116 @@ For more information: https://github.com/rajveer43/callflow-tracer
 
         except Exception as e:
             print(f"Error comparing traces: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return 1
+
+    def _handle_explain(self, args):
+        """Handle explain command."""
+        print(f"Explaining trace change: {args.before} -> {args.after}")
+
+        try:
+            before_graph = self._load_graph_from_json(args.before)
+            after_graph = self._load_graph_from_json(args.after)
+
+            report = explain_regression(
+                before_graph,
+                after_graph,
+                label1=args.label1,
+                label2=args.label2,
+                top_n=args.top,
+            )
+
+            if args.format == "json":
+                output = json.dumps(report, indent=2)
+            else:
+                output = format_regression_report(report, top_n=args.top)
+
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as f:
+                    f.write(output)
+                print(f"Regression report saved to: {args.output}")
+            else:
+                print("\n" + output)
+
+            return 0
+
+        except Exception as e:
+            print(f"Error explaining traces: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return 1
+
+    def _handle_benchmark(self, args):
+        """Handle benchmark command."""
+        print(f"Running benchmark: {args.script}")
+
+        try:
+            report = run_benchmark(
+                args.script,
+                script_args=args.script_args,
+                runs=args.runs,
+                sampling_rate=args.sampling_rate,
+                include_modules=args.include_modules,
+                exclude_modules=args.exclude_modules,
+                min_duration_ms=args.min_duration_ms,
+                include_args=args.include_args,
+            )
+
+            if args.format == "json":
+                output = json.dumps(benchmark_report_to_dict(report), indent=2)
+            elif args.format == "html":
+                output_path = args.output or "benchmark_report.html"
+                export_benchmark_html(report, output_path)
+                print(f"Benchmark report saved to: {output_path}")
+                if not args.no_browser:
+                    self._open_browser(output_path)
+                return 0
+            else:
+                output = format_benchmark_report(report)
+
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as f:
+                    f.write(output)
+                print(f"Benchmark report saved to: {args.output}")
+            else:
+                print("\n" + output)
+
+            return 0
+
+        except Exception as e:
+            print(f"Error running benchmark: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return 1
+
+    def _handle_summary(self, args):
+        """Handle summary command."""
+        print(f"Generating summary for: {args.file}")
+
+        try:
+            graph = self._load_graph_from_json(args.file)
+            report = summarize_graph(graph, top_n=args.top)
+
+            if args.format == "json":
+                output = json.dumps(report, indent=2)
+            else:
+                output = format_debug_summary(report, top_n=args.top)
+
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as f:
+                    f.write(output)
+                print(f"Summary saved to: {args.output}")
+            else:
+                print("\n" + output)
+
+            return 0
+
+        except Exception as e:
+            print(f"Error generating summary: {e}", file=sys.stderr)
             import traceback
 
             traceback.print_exc()
@@ -670,6 +904,35 @@ For more information: https://github.com/rajveer43/callflow-tracer
             import traceback
 
             traceback.print_exc()
+            return 1
+
+    def _add_funnel_parser(self, subparsers):
+        """Register the 'funnel' subcommand so the click group can handle it."""
+        funnel_parser = subparsers.add_parser(
+            "funnel",
+            help="Funnel analysis commands (create, track, analyze, visualize, …)",
+            # Capture every token after 'funnel' and hand them to click
+            add_help=False,
+        )
+        funnel_parser.add_argument(
+            "funnel_args",
+            nargs=argparse.REMAINDER,
+            help="Arguments passed directly to the funnel CLI",
+        )
+
+    def _handle_funnel(self, args):
+        """Delegate funnel subcommands to the click-based funnel CLI."""
+        from ..funnel.cli import funnel as funnel_group
+
+        funnel_args = getattr(args, "funnel_args", []) or []
+        try:
+            # standalone_mode=False prevents click from calling sys.exit itself
+            funnel_group.main(funnel_args, standalone_mode=False)
+            return 0
+        except SystemExit as exc:
+            return int(exc.code) if exc.code is not None else 0
+        except Exception as exc:
+            print(f"Error in funnel command: {exc}", file=sys.stderr)
             return 1
 
     def _add_quality_parser(self, subparsers):

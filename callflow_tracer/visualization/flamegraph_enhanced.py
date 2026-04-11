@@ -52,13 +52,13 @@ def generate_enhanced_html_template(
                 </div>
                 <div class="stat-item highlight">
                     <div class="stat-label">🔥 Slowest Function</div>
-                    <div class="stat-value-small">{stats['slowest_function']['name']}</div>
-                    <div class="stat-subvalue">{stats['slowest_function']['time']:.4f}s</div>
+                    <div class="stat-value-small">{stats['slowest_function']['name'] if stats.get('slowest_function') else 'N/A'}</div>
+                    <div class="stat-subvalue">{f"{stats['slowest_function']['time']:.4f}s" if stats.get('slowest_function') else ''}</div>
                 </div>
                 <div class="stat-item highlight">
                     <div class="stat-label">📞 Most Called</div>
-                    <div class="stat-value-small">{stats['most_called_function']['name']}</div>
-                    <div class="stat-subvalue">{stats['most_called_function']['count']:,} calls</div>
+                    <div class="stat-value-small">{stats['most_called_function']['name'] if stats.get('most_called_function') else 'N/A'}</div>
+                    <div class="stat-subvalue">{f"{stats['most_called_function']['count']:,} calls" if stats.get('most_called_function') else ''}</div>
                 </div>
             </div>
         </div>
