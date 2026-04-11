@@ -1,0 +1,83 @@
+name: Detect Unauthorized Copies
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # Every Monday at 9am UTC
+  workflow_dispatch:       # Also allow manual trigger
+
+jobs:
+  search-for-copies:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Search GitHub for repos containing the watermark
+        id: search
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Search for the unique watermark string across all public GitHub code
+          # The watermark is: callflow-tracer-origin:rajveer43
+          WATERMARK="callflow-tracer-origin:rajveer43"
+          OWNER="rajveer43"
+          REPO="callflow-tracer"
+
+          echo "Searching for watermark: $WATERMARK"
+
+          RESULTS=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/search/code?q=${WATERMARK}&type=code" \
+          )
+
+          echo "$RESULTS" | python3 - <<'PYEOF'
+          import json, sys, os
+
+          data = json.loads(sys.stdin.read())
+          owner = os.environ.get("OWNER", "rajveer43")
+          repo  = os.environ.get("REPO", "callflow-tracer")
+
+          suspicious = []
+          for item in data.get("items", []):
+              repo_full = item["repository"]["full_name"]
+              # Ignore the original repo and its forks listed under the owner
+              if repo_full == f"{owner}/{repo}":
+                  continue
+              # GitHub forks are known — flag repos that are NOT listed as forks
+              # (we can't check fork status in code search, so flag all others)
+              suspicious.append({
+                  "repo": repo_full,
+                  "url": item["html_url"],
+                  "file": item["path"],
+              })
+
+          if suspicious:
+              print("SUSPICIOUS_FOUND=true")
+              lines = ["| Repository | File | Link |", "|---|---|---|"]
+              for s in suspicious:
+                  lines.append(f"| `{s['repo']}` | `{s['file']}` | [view]({s['url']}) |")
+              body = "\n".join(lines)
+              print(f"ISSUE_BODY<<EOF\n{body}\nEOF")
+          else:
+              print("SUSPICIOUS_FOUND=false")
+          PYEOF
+
+      - name: Open an issue if suspicious repos found
+        if: env.SUSPICIOUS_FOUND == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo rajveer43/callflow-tracer \
+            --title "⚠️ Possible unauthorized copy detected ($(date +%Y-%m-%d))" \
+            --body "The weekly copy-detection scan found the repository watermark in repos other than the origin.
+
+          ${{ env.ISSUE_BODY }}
+
+          **Next steps:**
+          - Check if these are legitimate forks listed under your GitHub fork network
+          - If not a fork, review the repo and consider filing a DMCA takedown via GitHub: https://support.github.com/contact/dmca-takedown
+          " \
+            --label "security"

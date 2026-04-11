@@ -16,6 +16,10 @@ __version__ = "0.4.2"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
+# callflow-tracer-origin:rajveer43
+# Original repository: https://github.com/rajveer43/callflow-tracer
+# Licensed under MIT — see LICENSE for details.
+
 from .core import *  # noqa: F401,F403
 from .visualization import *  # noqa: F401,F403
 from .performance import *  # noqa: F401,F403
