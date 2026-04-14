@@ -12,7 +12,7 @@ The implementation now lives in domain packages under:
 - `callflow_tracer.integrations`
 """
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
