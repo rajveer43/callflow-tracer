@@ -7,6 +7,36 @@ and this project adheres to [semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2025-04-14
+
+### New Features
+- **AI Cost Analyzer**
+  - Track API usage costs for AI/LLM calls
+  - Cost breakdown by model and operation type
+  - Budget alerting and threshold monitoring
+  
+- **Enhanced Trace Comparison**
+  - `TraceComparator` class for diffing traces
+  - Retention analysis for memory leak detection
+  - Performance regression detection
+  
+- **Anomaly Detection Improvements**
+  - AI-powered anomaly detection in call flows
+  - Baseline learning and drift detection
+  - Smart alerting for unusual patterns
+
+### Improvements
+- Enhanced memory leak detection algorithms
+- Better async/await tracing support
+- Improved visualization performance
+- Updated CLI commands for new features
+
+### Bug Fixes
+- Fixed edge cases in snapshot comparison
+- Resolved memory tracking issues in long-running processes
+
+---
+
 ## [0.2.5] - 2025-10-24
 
 ### New Features
