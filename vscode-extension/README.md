@@ -17,11 +17,22 @@ Visualize Python function call flows with interactive graphs and  function call 
 - **Auto-instrumentation**: Automatic tracing for HTTP, Redis, and Boto3 libraries  
 - **Plugin System**: Extensible architecture for custom analyzers, exporters, and UI widgets
 
-### 🔧 Improvements
+### Improvements
 - Enhanced HTML export with anomaly detection reports
 - Integrated plugin system with built-in analyzers
 - Improved error handling and user feedback
 - Better integration with CallFlow Tracer Python library v0.3.2+
+
+## Installation
+
+### From VS Code Marketplace
+
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (or `Cmd+Shift+X` on Mac)
+3. Search for **"CallFlow Tracer"**
+4. Click **Install**
+
+**Direct Link**: https://marketplace.visualstudio.com/items?itemName=rajveer-rathod.callflow-tracer
 
 ## Usage
 
@@ -54,7 +65,7 @@ If you add Node dependencies later, run `npm install` inside `vscode-extension/`
 - `CallFlow: Explain Traces` - Compare two trace JSON files and explain regressions
 - `CallFlow: Run Benchmark` - Measure tracing overhead for the current Python file
 
-### ✨ New Commands
+### New Commands
 - `CallFlow: Analyze Anomalies` - Run anomaly detection on current file
 - `CallFlow: Enable Auto-instrumentation` - Setup automatic library tracing
 - `CallFlow: Show Plugin Manager` - View and manage installed plugins
@@ -76,7 +87,7 @@ If you add Node dependencies later, run `npm install` inside `vscode-extension/`
 - `callflowTracer.benchmarkRuns`: Number of runs to use for benchmark mode (default: 3)
 - `callflowTracer.benchmarkFormat`: Default benchmark output format (`text`, `json`, or `html`)
 
-### 📦 Dependencies
+### Dependencies
 - Updated to work with CallFlow Tracer v0.3.2+
 - Enhanced integration with advanced features
 
@@ -86,9 +97,17 @@ None at this time. Please report issues on GitHub.
 
 ## Release Notes
 
+### 2.2.0
+
+- Fixed publisher ID to match VS Code Marketplace account
+- Improved integration with CallFlow Tracer Python library v0.3.2+
+- Enhanced HTML export with anomaly detection reports
+- Integrated plugin system with built-in analyzers
+- Improved error handling and user feedback
+
 ### 2.0.0
 
-Latest release of CallFlow Tracer
+Initial release of CallFlow Tracer
 
 ---
 
