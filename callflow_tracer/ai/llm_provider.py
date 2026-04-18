@@ -300,22 +300,27 @@ def get_default_provider(provider_name: Optional[str] = None) -> LLMProvider:
             )
         return provider
 
-    # Auto-detect
-    providers = [
+    # Auto-detect all available providers
+    candidates = [
         OpenAIProvider(),
         AnthropicProvider(),
         GeminiProvider(),
         OllamaProvider(),
     ]
+    available = [p for p in candidates if p.is_available()]
 
-    for provider in providers:
-        if provider.is_available():
-            return provider
+    if not available:
+        raise ValueError(
+            "No LLM provider available. Please configure one of:\n"
+            "- OpenAI: Set OPENAI_API_KEY environment variable\n"
+            "- Anthropic: Set ANTHROPIC_API_KEY environment variable\n"
+            "- Google Gemini: Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable\n"
+            "- Ollama: Install and run Ollama locally (https://ollama.ai)"
+        )
 
-    raise ValueError(
-        "No LLM provider available. Please configure one of:\n"
-        "- OpenAI: Set OPENAI_API_KEY environment variable\n"
-        "- Anthropic: Set ANTHROPIC_API_KEY environment variable\n"
-        "- Google Gemini: Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable\n"
-        "- Ollama: Install and run Ollama locally (https://ollama.ai)"
-    )
+    if len(available) == 1:
+        return available[0]
+
+    # Multiple keys configured → wrap in ProviderChain for automatic failover
+    from .failover import ProviderChain
+    return ProviderChain(available)

@@ -1406,6 +1406,154 @@ export_html(
 
 The library automatically truncates function arguments to 100 characters for privacy. For production use, you can modify the `CallNode.add_call()` method to further anonymize or exclude sensitive data.
 
+## 🤖 Swarm Agent System
+
+callflow-tracer includes a multi-agent AI system that answers questions about your codebase. A **RouterAgent** reads your question, inspects the project structure, and dispatches specialist agents — each with the right tools and skills — to produce a synthesised answer.
+
+### Quick Start
+
+```python
+from callflow_tracer.agent import ask
+
+# One-liner: RouterAgent picks the right specialists automatically
+answer = ask("Which functions are called most frequently?")
+print(answer)
+
+# Verbose mode — watch agents and tools fire in real time
+answer = ask(
+    "Why does the tracer use a context manager instead of a decorator?",
+    verbose=True,
+    mode="parallel",          # specialists run concurrently (default)
+    scope="callflow_tracer/", # restrict search to a subdirectory
+)
+```
+
+### SwarmBuilder — Fine-Grained Control
+
+```python
+from callflow_tracer.ai.llm_provider import get_default_provider
+from callflow_tracer.agent.orchestration import SwarmBuilder
+
+swarm = (
+    SwarmBuilder(get_default_provider())
+    .with_mode("parallel")   # or "sequential"
+    .with_timeout(60)        # per-agent timeout in seconds
+    .with_max_workers(3)
+    .verbose()
+    .build()
+)
+answer = swarm.ask(
+    question="Which modules have the most complex logic?",
+    scope="callflow_tracer/agent/",
+)
+```
+
+### Skills — Assign Capabilities at Dispatch Time
+
+RouterAgent can assign **skills** (tool bundles + prompt fragments) and individual **tools** to each specialist at runtime. Built-in skills:
+
+| Skill | Tools | Use |
+|---|---|---|
+| `StaticAnalysis` | grep, list_files, read_file | code search & pattern detection |
+| `DependencyTrace` | run_context, run_why | execution-path analysis |
+| `CostProfiling` | run_agent_trace, grep | LLM cost & token breakdown |
+| `SecurityScan` | grep, read_file | OWASP Top 10 pattern detection |
+
+Custom skills can be placed in `~/.callflow/skills/` and are loaded automatically.
+
+### Hooks — Subscribe to Swarm Events
+
+```python
+events = []
+
+def on_tool_called(kind, payload):
+    events.append({"agent": payload["agent"], "tool": payload["tool"]})
+
+answer = swarm.ask(
+    question="How does backoff work in the provider chain?",
+    scope="callflow_tracer/ai/",
+    hooks={
+        "tool_called":   on_tool_called,
+        "finding_ready": lambda k, p: print(f"[{p['agent']}] {p['summary'][:60]}"),
+    },
+)
+print(f"Collected {len(events)} tool-call events")
+```
+
+Available `HookKind` values: `agent_start`, `tool_called`, `tool_result`, `finding_ready`, `swarm_start`, `swarm_complete`.
+
+### Provider Failover
+
+```python
+from callflow_tracer.ai.llm_provider import AnthropicProvider, OpenAIProvider
+from callflow_tracer.ai.failover import ProviderChain
+from callflow_tracer.agent.orchestration import SwarmBuilder
+
+chain = ProviderChain(
+    providers=[AnthropicProvider(), OpenAIProvider()],
+    max_attempts=3,
+)
+swarm = SwarmBuilder(chain).with_timeout(90).build()
+```
+
+On HTTP 429 / 503, the chain retries the next provider with exponential backoff — no code changes needed in agents.
+
+### Persistent Bindings
+
+Save `scope` and `provider` preferences per project directory — picked up automatically on the next run:
+
+```python
+from callflow_tracer.agent.core.bindings import BindingStore, CwdBinding
+
+store = BindingStore()
+store.save("/path/to/project", CwdBinding(
+    scope="callflow_tracer/agent/",
+    provider="anthropic",
+))
+```
+
+### Specialist Agents
+
+| Agent | Responsibility |
+|---|---|
+| `RouterAgent` | Inspects codebase, produces dispatch plan with skills + tools per agent |
+| `ContextAgent` | Hot/slow functions, call frequency, execution flow |
+| `WhyAgent` | Why a function is called, call-chain analysis |
+| `CostAgent` | LLM token usage, agent call overhead |
+| `GrepAgent` | Static code search, file and pattern discovery |
+
+### Environment Variables
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # preferred
+export OPENAI_API_KEY=sk-...          # fallback
+export GEMINI_API_KEY=AI...           # fallback
+```
+
+When multiple keys are set, `get_default_provider()` returns a `ProviderChain` with automatic failover.
+
+### Examples
+
+| File | What it shows |
+|---|---|
+| [`examples/agent_basic_ask.py`](examples/agent_basic_ask.py) | One-liner ask, verbose mode, scoped search, saving a Markdown report |
+| [`examples/agent_advanced.py`](examples/agent_advanced.py) | SwarmBuilder, event hooks, ProviderChain failover, persistent bindings, workspace skill |
+
+```bash
+python examples/agent_basic_ask.py        # runs verbose example by default
+python examples/agent_basic_ask.py 1      # one-liner ask
+python examples/agent_advanced.py 3       # ProviderChain failover demo
+python examples/agent_advanced.py 4       # persistent bindings (no LLM needed)
+```
+
+### Tests
+
+```bash
+pytest tests/test_agent_swarm.py -v       # 52 unit tests — no LLM calls required
+```
+
+---
+
 ## 📁 Project Structure
 
 ```

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "callflow-tracer"
-version = "0.5.0"
+version = "0.6.0"
 description = "A lightweight Python library for tracing function call relationships and visualizing them as interactive graphs,  anomaly detection, and OpenTelemetry export for production observability"
 readme = "README.md"
 license = { text = "MIT" }
