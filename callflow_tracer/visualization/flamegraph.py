@@ -13,6 +13,7 @@ import tempfile
 import webbrowser
 
 from ..core.tracer import CallGraph, CallNode
+from ..llm.span import get_llm_registry
 
 
 def generate_flamegraph(
@@ -178,6 +179,16 @@ def _build_flame_children(node_data: dict, nodes: dict, edges: list) -> None:
             "total_time": total_time,
             "avg_time": avg_time,
         }
+
+        # Annotate LLM spans with provider/token/cost metadata for flame graph
+        llm_span = get_llm_registry().get(callee_name)
+        if llm_span is not None:
+            child_data["type"] = "llm"
+            child_data["provider"] = llm_span.provider
+            child_data["model"] = llm_span.model
+            child_data["input_tokens"] = llm_span.input_tokens
+            child_data["output_tokens"] = llm_span.output_tokens
+            child_data["cost_usd"] = llm_span.cost_usd
 
         # Recursively process children (prevent infinite recursion)
         if callee_name != node_name:  # Avoid self-recursion

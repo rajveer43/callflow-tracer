@@ -82,6 +82,7 @@ def generate_enhanced_html_template(
         "rainbow": "Rainbow",
         "performance": "Performance (Fast=Green, Slow=Red)",
     }
+    # LLM spans are always gold regardless of scheme — no separate scheme needed
 
     color_options = "".join(
         [
@@ -423,6 +424,10 @@ def generate_enhanced_html_template(
                 <div class="legend-item">
                     <span>👆 <strong>Hover</strong> for details</span>
                 </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background:#f59e0b;"></div>
+                    <span>&#129302; <strong>Gold</strong> = LLM call (tokens &amp; cost in tooltip)</span>
+                </div>
             </div>
         </div>
         
@@ -450,12 +455,14 @@ def generate_enhanced_html_template(
         const minWidthThreshold = {min_width};
         
         // Color scheme definitions
+        const _llmColor = '#f59e0b'; // gold — LLM spans always rendered in gold
         const colorSchemes = {{
-            default: (d) => d3.interpolateRdYlGn(1 - (d.data.value / 1000)),
-            hot: (d) => d3.interpolateYlOrRd(d.data.value / 1000),
-            cool: (d) => d3.interpolateCool(d.data.value / 1000),
-            rainbow: (d) => d3.interpolateRainbow(d.data.value / 1000),
+            default: (d) => d.data.type === 'llm' ? _llmColor : d3.interpolateRdYlGn(1 - (d.data.value / 1000)),
+            hot: (d) => d.data.type === 'llm' ? _llmColor : d3.interpolateYlOrRd(d.data.value / 1000),
+            cool: (d) => d.data.type === 'llm' ? _llmColor : d3.interpolateCool(d.data.value / 1000),
+            rainbow: (d) => d.data.type === 'llm' ? _llmColor : d3.interpolateRainbow(d.data.value / 1000),
             performance: (d) => {{
+                if (d.data.type === 'llm') return _llmColor;
                 const time = d.data.total_time || 0;
                 if (time < 0.01) return '#4ecdc4'; // Fast - cyan
                 if (time < 0.1) return '#45b7d1';  // Medium - blue
@@ -501,14 +508,22 @@ def generate_enhanced_html_template(
                     tooltip += 'Total Time: ' + (d.data.total_time ? d.data.total_time.toFixed(4) + 's' : 'N/A') + '<br/>';
                     tooltip += 'Avg Time: ' + (d.data.avg_time ? d.data.avg_time.toFixed(4) + 's' : 'N/A') + '<br/>';
                     tooltip += 'Calls: ' + (d.data.call_count || 1) + '<br/>';
-                    
+
                     // Calculate percentage
                     const totalTime = {stats['total_time'] if stats else 0};
                     if (totalTime > 0 && d.data.total_time) {{
                         const percentage = (d.data.total_time / totalTime * 100).toFixed(2);
-                        tooltip += 'Percentage: ' + percentage + '%';
+                        tooltip += 'Percentage: ' + percentage + '%<br/>';
                     }}
-                    
+
+                    // LLM span details
+                    if (d.data.type === 'llm') {{
+                        tooltip += '<hr style="margin:4px 0;border-color:#f59e0b"/>';
+                        tooltip += '&#129302; <strong>' + (d.data.provider || '') + '</strong> &middot; ' + (d.data.model || '') + '<br/>';
+                        tooltip += 'Tokens in: ' + (d.data.input_tokens || 0) + ' &nbsp; out: ' + (d.data.output_tokens || 0) + '<br/>';
+                        tooltip += 'Cost: $' + ((d.data.cost_usd || 0).toFixed(4));
+                    }}
+
                     return tooltip;
                 }})
                 .sort((a, b) => b.value - a.value)

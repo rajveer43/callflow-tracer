@@ -256,6 +256,29 @@ class ApiCostClassifier(CostClassifier):
         return call_count * rate
 
 
+class LLMCostClassifier(CostClassifier):
+    """LLM SDK calls recorded by callflow_tracer.llm — cost comes from the token registry."""
+
+    @property
+    def category(self) -> CostCategory:
+        return CostCategory.API
+
+    def applies_to(self, func_name: str, module: str) -> bool:
+        # module is "llm.anthropic" / "llm.openai", func_name is the model name
+        return module.startswith("llm.")
+
+    def compute(self, func_name, module, call_count, total_time_ms, pricing) -> float:
+        try:
+            from callflow_tracer.llm.span import get_llm_registry
+            node_full_name = f"{module}.{func_name}"
+            span = get_llm_registry().get(node_full_name)
+            if span is not None:
+                return span.cost_usd
+        except Exception:
+            pass
+        return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Strategy pattern — opportunity detectors
 # ---------------------------------------------------------------------------
@@ -402,6 +425,7 @@ class CostAnalyzer:
             ComputeCostClassifier(),
             DatabaseCostClassifier(),
             ApiCostClassifier(),
+            LLMCostClassifier(),
         ]:
             self.register_classifier(clf)
 

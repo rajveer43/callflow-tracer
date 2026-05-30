@@ -10,9 +10,13 @@ The implementation now lives in domain packages under:
 - `callflow_tracer.funnel`
 - `callflow_tracer.benchmark`
 - `callflow_tracer.integrations`
+- `callflow_tracer.llm`
+- `callflow_tracer.graph`
+- `callflow_tracer.runtime`
+- `callflow_tracer.dashboard`
 """
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
@@ -28,6 +32,32 @@ from .observability import *  # noqa: F401,F403
 from .benchmark import *  # noqa: F401,F403
 from .integrations import *  # noqa: F401,F403
 from .funnel import *  # noqa: F401,F403
+from .llm import llm_instrumentation, get_llm_instrumentation_manager, get_llm_registry
+from .graph import build_graph, GodNodeDetector, CommunityDetector, HTMLExporter, JSONExporter, Neo4jExporter, KnowledgeGraph
+from .runtime import SamplingProfiler, ThreadedCallTracer, ChromeTimelineExporter
+from .dashboard import DashboardRenderer, DashboardServer
+
+__all__ = [
+    # llm
+    "llm_instrumentation",
+    "get_llm_instrumentation_manager",
+    "get_llm_registry",
+    # graph
+    "build_graph",
+    "GodNodeDetector",
+    "CommunityDetector",
+    "HTMLExporter",
+    "JSONExporter",
+    "Neo4jExporter",
+    "KnowledgeGraph",
+    # runtime
+    "SamplingProfiler",
+    "ThreadedCallTracer",
+    "ChromeTimelineExporter",
+    # dashboard
+    "DashboardRenderer",
+    "DashboardServer",
+]
 
 
 def trace_and_export(output_file: str, include_args: bool = False):
