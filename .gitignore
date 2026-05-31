@@ -145,10 +145,6 @@ ehthumbs.db
 Thumbs.db
 
 # Test outputs
-test_output.html
-test_output.json
-decorator_test.html
-context_test.html
 *.html
 *.json
 
@@ -159,8 +155,3 @@ NOTES
 vscode-extension/out/
 *.vsix
 
-# GSoC / personal docs
-GSOC_ALIGNMENT.md
-GSoC_2026_Proposal_Gemini_CLI.md
-blog_post.md
-github_comment_draft.md 

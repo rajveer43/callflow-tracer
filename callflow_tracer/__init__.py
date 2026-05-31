@@ -16,7 +16,7 @@ The implementation now lives in domain packages under:
 - `callflow_tracer.dashboard`
 """
 
-__version__ = "0.6.1"
+__version__ = "0.7.0"
 __author__ = "Rajveer Rathod"
 __email__ = "rathodrajveer1311@gmail.com"
 
